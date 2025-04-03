@@ -20,9 +20,9 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options => {
         options.Cookie.HttpOnly = true;
-        options.Cookie.SecurePolicy = CookieSecurePolicy.Always; // Will fail on HTTP
-        options.SlidingExpiration = true;  // Add this
-        options.Cookie.SameSite = SameSiteMode.None; // Needed for cross-site
+        options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+        options.SlidingExpiration = true;
+        options.Cookie.SameSite = SameSiteMode.None;
     });
 
 builder.Services.AddAuthorization();
@@ -33,8 +33,8 @@ builder.Services.AddCors(options =>
     options.AddPolicy("NetlifyCors", policy =>
     {
         policy.WithOrigins(
-                "https://gameassetstorage.netlify.app", // Replace with your Netlify URL
-                "http://localhost:3000"              // For local development
+                "https://gameassetstorage.netlify.app",
+                "http://localhost:3000"
             )
             .AllowAnyMethod()
             .AllowAnyHeader()
@@ -52,11 +52,18 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// Configure for Netlify (uses PORT env variable if exists)
+// Auto-apply migrations on startup
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    db.Database.Migrate();
+}
+
+// Configure for Netlify
 var port = Environment.GetEnvironmentVariable("PORT") ?? "7044";
 if (!app.Environment.IsDevelopment())
 {
-    app.UseHttpsRedirection(); // Force HTTPS in production
+    app.UseHttpsRedirection();
 }
 
 // Middleware Pipeline
@@ -66,7 +73,6 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
 
