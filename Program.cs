@@ -35,7 +35,7 @@ builder.Services.AddCors(options =>
         policy.WithOrigins(
                 "https://gameassetstorage.netlify.app",
                 "http://localhost:3000",
-                "https://*.onrender.com"
+                "https://gameasset-backend-aj1g.onrender.com" // Render
             )
             .AllowAnyMethod()
             .AllowAnyHeader()
