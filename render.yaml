@@ -1,14 +1,16 @@
 services:
   - type: web
     name: gameasset-backend
-    runtime: node  # Required by Render for .NET apps
+    runtime: node
     buildCommand: dotnet publish -c Release -o ./publish
     startCommand: dotnet ./publish/GameAssetStorage.dll
     envVars:
       - key: ASPNETCORE_ENVIRONMENT
         value: Production
+      - key: ASPNETCORE_FORWARDEDHEADERS_ENABLED
+        value: "true"
       - key: ConnectionStrings__DefaultConnection
-        value: "Host=ep-falling-grass-a821j415-pooler.eastus2.azure.neon.tech;Port=5432;Database=gameassetdb;Username=neondb_owner;Password=npg_rDeG0nq8baAR;SslMode=Require"
+        value: "Your_NeonDB_Connection_String"
       - key: ASPNETCORE_URLS
         value: http://*:$PORT
       - key: ASPNETCORE_HTTPS_PORT
