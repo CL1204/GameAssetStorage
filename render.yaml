@@ -1,8 +1,8 @@
 services:
   - type: web
     name: gameasset-backend
-    runtime: node
-    buildCommand: cd GameAssetStorage && dotnet publish -c Release -o ../publish
+    runtime: node  # Required by Render for .NET apps
+    buildCommand: dotnet publish -c Release -o ./publish
     startCommand: dotnet ./publish/GameAssetStorage.dll
     envVars:
       - key: ASPNETCORE_ENVIRONMENT
@@ -11,3 +11,5 @@ services:
         value: "Host=ep-falling-grass-a821j415-pooler.eastus2.azure.neon.tech;Port=5432;Database=gameassetdb;Username=neondb_owner;Password=npg_rDeG0nq8baAR;SslMode=Require"
       - key: ASPNETCORE_URLS
         value: http://*:$PORT
+      - key: ASPNETCORE_HTTPS_PORT
+        value: 443
