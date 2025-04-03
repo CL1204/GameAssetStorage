@@ -107,3 +107,4 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+Console.WriteLine("App is fully running and listening.");
