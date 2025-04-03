@@ -1,0 +1,13 @@
+bin/
+obj/
+frontend/
+.vs/
+*.user
+publish/
+appsettings.Development.json
+aws-beanstalk-tools-defaults.json
+Migrations/
+Properties/launchSettings.json
+.elasticbeanstalk/
+*.http
+*.csproj.user
