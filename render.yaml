@@ -1,9 +1,8 @@
 ﻿services:
   - type: web
     name: gameasset-backend
-    runtime: docker  # Required by Render's validator
-    buildCommand: dotnet publish -c Release -o ./publish
-    startCommand: dotnet ./publish/GameAssetStorage.dll
+    runtime: docker
+    # Remove buildCommand/startCommand - Dockerfile handles this now
     envVars:
       - key: ASPNETCORE_ENVIRONMENT
         value: Production
