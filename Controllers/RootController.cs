@@ -1,10 +1,16 @@
-﻿// Controllers/RootController.cs
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 
-[ApiController]
-[Route("/")]
-public class RootController : ControllerBase
+namespace GameAssetStorage.Controllers
 {
-    [HttpGet]
-    public IActionResult Get() => Ok("Backend is running.");
+    [ApiController]
+    [Route("/")]
+    public class RootController : ControllerBase
+    {
+        [HttpGet]
+        public IActionResult Get()
+        {
+            Console.WriteLine("Health check hit"); // 🟡 Add this line
+            return Ok("Backend is running.");
+        }
+    }
 }
