@@ -15,10 +15,13 @@ appsettings.Development.json
 aws-beanstalk-tools-defaults.json
 Properties/launchSettings.json
 
-## Frontend ##
-frontend/**
-
 ## Database ##
 Migrations/
 *.db
-*.sqlite3frontend/
+*.sqlite3
+
+## Frontend ##
+frontend/*
+!frontend/css/
+frontend/css/*
+!frontend/css/styles.css
