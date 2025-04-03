@@ -1,6 +1,5 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.IO;
 using System.Threading.Tasks;
 using GameAssetStorage.Services;
 
@@ -8,11 +7,11 @@ using GameAssetStorage.Services;
 [Route("api/assets")]
 public class AssetController : ControllerBase
 {
-    private readonly S3Service _s3Service;
+    private readonly CloudinaryService _cloudinaryService;
 
-    public AssetController(S3Service s3Service)
+    public AssetController(CloudinaryService cloudinaryService)
     {
-        _s3Service = s3Service;
+        _cloudinaryService = cloudinaryService;
     }
 
     [HttpPost("upload")]
@@ -23,18 +22,16 @@ public class AssetController : ControllerBase
             return BadRequest("No file uploaded.");
         }
 
-        using var stream = file.OpenReadStream();
-        var fileUrl = await _s3Service.UploadFileAsync(file.FileName, stream);
+        var fileUrl = await _cloudinaryService.UploadImageAsync(file);
 
         return Ok(new { Url = fileUrl });
     }
 
-    // ✅ Protected Endpoint: Requires JWT Authentication
     [Authorize]
     [HttpGet("secure-data")]
     public IActionResult GetSecureData()
     {
-        Console.WriteLine("✅ Secure Data endpoint accessed!");  // 🔹 Added log for debugging
+        Console.WriteLine("✅ Secure Data endpoint accessed!");
         return Ok(new { message = "You have accessed a protected endpoint!" });
     }
 }
