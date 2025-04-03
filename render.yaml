@@ -1,16 +1,17 @@
 services:
   - type: web
     name: gameasset-backend
-    runtime: node
+    runtime: docker
     buildCommand: dotnet publish -c Release -o ./publish
     startCommand: dotnet ./publish/GameAssetStorage.dll
+    healthCheckPath: /
     envVars:
       - key: ASPNETCORE_ENVIRONMENT
         value: Production
       - key: ASPNETCORE_FORWARDEDHEADERS_ENABLED
         value: "true"
       - key: ConnectionStrings__DefaultConnection
-        value: "Your_NeonDB_Connection_String"
+        sync: false
       - key: ASPNETCORE_URLS
         value: http://*:$PORT
       - key: ASPNETCORE_HTTPS_PORT

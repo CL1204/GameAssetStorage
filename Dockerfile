@@ -1,17 +1,21 @@
 # Build stage
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
-# Copy JUST the project file first
+
+# Copy just the project file and restore
 COPY ["GameAssetStorage.csproj", "."]
 RUN dotnet restore "GameAssetStorage.csproj"
-# Now copy everything else
+
+# Copy everything else and publish
 COPY . .
-RUN dotnet build "GameAssetStorage.csproj" -c Release -o /app/build
 RUN dotnet publish "GameAssetStorage.csproj" -c Release -o /app/publish
 
 # Runtime stage
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
 COPY --from=build /app/publish .
+
 ENV ASPNETCORE_URLS=http://*:$PORT
+EXPOSE 10000
+
 ENTRYPOINT ["dotnet", "GameAssetStorage.dll"]
