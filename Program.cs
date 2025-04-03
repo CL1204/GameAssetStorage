@@ -10,8 +10,11 @@ using System.IO;
 var builder = WebApplication.CreateBuilder(args);
 
 // Configure PostgreSQL Database
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
+builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Register Cloudinary service (🔹 NEW)
+builder.Services.AddSingleton<CloudinaryService>();
 
 // Data Protection (store keys in /app/keys folder inside container)
 builder.Services.AddDataProtection()
@@ -73,7 +76,7 @@ using (var scope = app.Services.CreateScope())
     var services = scope.ServiceProvider;
     try
     {
-        var db = services.GetRequiredService<ApplicationDbContext>();
+        var db = services.GetRequiredService<AppDbContext>();
         db.Database.Migrate();
     }
     catch (Exception ex)
@@ -95,7 +98,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// Optional: add dummy wwwroot/ to suppress warnings
+// Serve static files
 app.UseStaticFiles();
 
 app.UseRouting();

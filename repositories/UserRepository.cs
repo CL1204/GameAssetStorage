@@ -6,11 +6,11 @@ namespace GameAssetStorage.Repositories
 {
     public class UserRepository : IUserRepository
     {
-        private readonly ApplicationDbContext _context;
+        private readonly AppDbContext _context;
         private readonly ILogger<UserRepository> _logger;
 
         public UserRepository(
-            ApplicationDbContext context,
+            AppDbContext context,
             ILogger<UserRepository> logger)
         {
             _context = context;

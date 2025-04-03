@@ -15,12 +15,12 @@ namespace GameAssetStorage.Controllers
     [Route("api/auth")]
     public class AuthController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
+        private readonly AppDbContext _context;
         private readonly ILogger<AuthController> _logger;
         private readonly IUserService _userService;
 
         public AuthController(
-            ApplicationDbContext context,
+            AppDbContext context,
             ILogger<AuthController> logger,
             IUserService userService)
         {
