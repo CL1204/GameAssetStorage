@@ -1,14 +1,13 @@
 ﻿services:
   - type: web
     name: gameasset-backend
-    runtime: dotnet  # Changed from docker to native .NET (recommended for simplicity)
+    runtime: node  # Temporary workaround - we'll override with buildCommand
     buildCommand: dotnet publish -c Release -o ./publish
     startCommand: dotnet ./publish/GameAssetStorage.dll
-    env: dotnet
     envVars:
       - key: ASPNETCORE_ENVIRONMENT
         value: Production
       - key: ConnectionStrings__DefaultConnection
         value: "Host=ep-falling-grass-a821j415-pooler.eastus2.azure.neon.tech;Port=5432;Database=gameassetdb;Username=neondb_owner;Password=npg_rDeG0nq8baAR;SslMode=Require"
       - key: ASPNETCORE_URLS
-        value: http://*:$PORT  # Required for Render's dynamic port assignment
+        value: http://*:$PORT

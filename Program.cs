@@ -34,7 +34,8 @@ builder.Services.AddCors(options =>
     {
         policy.WithOrigins(
                 "https://gameassetstorage.netlify.app",
-                "http://localhost:3000"
+                "http://localhost:3000",
+                "https://*.onrender.com"
             )
             .AllowAnyMethod()
             .AllowAnyHeader()
@@ -60,7 +61,7 @@ using (var scope = app.Services.CreateScope())
 }
 
 // Configure for Netlify
-var port = Environment.GetEnvironmentVariable("PORT") ?? "7044";
+app.Urls.Add($"http://*:{Environment.GetEnvironmentVariable("PORT") ?? "7044"}");
 if (!app.Environment.IsDevelopment())
 {
     app.UseHttpsRedirection();
@@ -86,7 +87,8 @@ app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new PhysicalFileProvider(
         Path.Combine(Directory.GetCurrentDirectory(), "frontend")),
-    RequestPath = ""
+    RequestPath = "",
+    ServeUnknownFileTypes = true
 });
 
 app.Run();

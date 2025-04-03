@@ -1,13 +1,24 @@
+## .NET ##
 bin/
 obj/
-frontend/
-.vs/
-*.user
 publish/
-appsettings.Development.json
-aws-beanstalk-tools-defaults.json
-Migrations/
-Properties/launchSettings.json
+*.user
+*.csproj.user
+
+## VS & IDE ##
+.vs/
 .elasticbeanstalk/
 *.http
-*.csproj.user
+
+## Configs ##
+appsettings.Development.json
+aws-beanstalk-tools-defaults.json
+Properties/launchSettings.json
+
+## Frontend ##
+frontend/**
+
+## Database ##
+Migrations/
+*.db
+*.sqlite3
