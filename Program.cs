@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
+using System.IO;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,10 +13,10 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Data Protection (using in-memory keys since Render doesn't support persistent volumes)
+// Data Protection (store keys in /app/keys folder inside container)
 builder.Services.AddDataProtection()
-    .SetApplicationName("GameAssetStorage")
-    .DisableAutomaticKeyGeneration();
+    .PersistKeysToFileSystem(new DirectoryInfo("/app/keys"))
+    .SetApplicationName("GameAssetStorage");
 
 // Register Repositories and Services
 builder.Services.AddScoped<IUserRepository, UserRepository>();
@@ -23,7 +24,8 @@ builder.Services.AddScoped<IUserService, UserService>();
 
 // Add Cookie Authentication
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
-    .AddCookie(options => {
+    .AddCookie(options =>
+    {
         options.Cookie.HttpOnly = true;
         options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
         options.SlidingExpiration = true;
@@ -93,10 +95,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseStaticFiles(new StaticFileOptions
-{
-    ServeUnknownFileTypes = false
-});
+// Optional: add dummy wwwroot/ to suppress warnings
+app.UseStaticFiles();
 
 app.UseRouting();
 
