@@ -21,4 +21,4 @@ frontend/**
 ## Database ##
 Migrations/
 *.db
-*.sqlite3
+*.sqlite3frontend/
