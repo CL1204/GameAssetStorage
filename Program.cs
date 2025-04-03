@@ -3,7 +3,6 @@ using GameAssetStorage.Repositories;
 using GameAssetStorage.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.FileProviders;
 using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -35,7 +34,7 @@ builder.Services.AddCors(options =>
         policy.WithOrigins(
                 "https://gameassetstorage.netlify.app",
                 "http://localhost:3000",
-                "https://gameasset-backend-aj1g.onrender.com" // Render
+                "https://gameasset-backend-aj1g.onrender.com"
             )
             .AllowAnyMethod()
             .AllowAnyHeader()
@@ -60,7 +59,7 @@ using (var scope = app.Services.CreateScope())
     db.Database.Migrate();
 }
 
-// Configure for Netlify
+// Configure for Render
 app.Urls.Add($"http://*:{Environment.GetEnvironmentVariable("PORT") ?? "7044"}");
 if (!app.Environment.IsDevelopment())
 {
@@ -74,7 +73,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseStaticFiles();
+app.UseStaticFiles(); // Basic static files (no frontend folder)
 app.UseRouting();
 
 app.UseCors("NetlifyCors");
@@ -82,13 +81,5 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-
-app.UseStaticFiles(new StaticFileOptions
-{
-    FileProvider = new PhysicalFileProvider(
-        Path.Combine(Directory.GetCurrentDirectory(), "frontend")),
-    RequestPath = "",
-    ServeUnknownFileTypes = true
-});
 
 app.Run();
