@@ -2,6 +2,7 @@
 using GameAssetStorage.Repositories;
 using GameAssetStorage.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 
@@ -10,6 +11,11 @@ var builder = WebApplication.CreateBuilder(args);
 // Configure PostgreSQL Database
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Data Protection (using in-memory keys since Render doesn't support persistent volumes)
+builder.Services.AddDataProtection()
+    .SetApplicationName("GameAssetStorage")
+    .DisableAutomaticKeyGeneration();
 
 // Register Repositories and Services
 builder.Services.AddScoped<IUserRepository, UserRepository>();
@@ -77,6 +83,7 @@ using (var scope = app.Services.CreateScope())
 
 // Configure for Render
 app.Urls.Add($"http://*:{Environment.GetEnvironmentVariable("PORT") ?? "7044"}");
+app.UseForwardedHeaders();
 app.UseHttpsRedirection();
 
 // Middleware Pipeline
@@ -86,7 +93,11 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseStaticFiles();
+app.UseStaticFiles(new StaticFileOptions
+{
+    ServeUnknownFileTypes = false
+});
+
 app.UseRouting();
 
 app.UseCors("NetlifyCors");
