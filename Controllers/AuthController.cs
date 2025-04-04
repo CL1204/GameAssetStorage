@@ -1,13 +1,12 @@
 ﻿using GameAssetStorage.Data;
 using GameAssetStorage.Models;
-using GameAssetStorage.Services; // Added this crucial using directive
+using GameAssetStorage.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
-using BCrypt.Net;
 
 namespace GameAssetStorage.Controllers
 {
