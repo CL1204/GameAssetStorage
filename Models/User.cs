@@ -13,8 +13,6 @@ namespace GameAssetStorage.Models
         [Required]
         public string password { get; set; } = string.Empty;
 
-        public DateTime created_at { get; set; } = DateTime.UtcNow;
-
         public bool is_admin { get; set; } = false;
 
         public bool is_banned { get; set; } = false; // ✅ Fixes CS1061 error
