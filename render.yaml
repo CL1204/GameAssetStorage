@@ -2,17 +2,33 @@ services:
   - type: web
     name: gameasset-backend
     runtime: docker
+<<<<<<< HEAD
     buildCommand: dotnet publish -c Release -o ./publish
     startCommand: dotnet ./publish/GameAssetStorage.dll
     healthCheckPath: /
+=======
+    dockerfilePath: Dockerfile
+>>>>>>> main
     envVars:
       - key: ASPNETCORE_ENVIRONMENT
         value: Production
       - key: ASPNETCORE_FORWARDEDHEADERS_ENABLED
         value: "true"
       - key: ConnectionStrings__DefaultConnection
+<<<<<<< HEAD
         sync: false
       - key: ASPNETCORE_URLS
         value: http://*:$PORT
       - key: ASPNETCORE_HTTPS_PORT
         value: 443
+=======
+        fromDatabase:
+          name: gameassetdb
+          property: connectionString  # This was the missing property
+      - key: ASPNETCORE_URLS
+        value: http://*:$PORT
+      - key: ASPNETCORE_HTTPS_PORT
+        value: "443"
+      - key: PORT
+        value: "10000"
+>>>>>>> main
