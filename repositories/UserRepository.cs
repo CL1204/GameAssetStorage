@@ -47,6 +47,11 @@ namespace GameAssetStorage.Repositories
                 _logger.LogError(ex, "Database error adding user");
                 throw new Exception("Registration failed due to database error");
             }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error in AddUser");
+                throw;
+            }
         }
     }
 }
