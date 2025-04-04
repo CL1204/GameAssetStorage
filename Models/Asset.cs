@@ -1,17 +1,29 @@
-﻿namespace GameAssetStorage.Models
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace GameAssetStorage.Models
 {
     public class Asset
     {
         public int Id { get; set; }
 
-        public required string Title { get; set; }
-        public required string Description { get; set; }
-        public required string ImageUrl { get; set; }
+        [Required]
+        [StringLength(100)]
+        public string Title { get; set; } = string.Empty;
+
+        [Required]
+        [StringLength(500)]
+        public string Description { get; set; } = string.Empty;
+
+        [Required]
+        public string ImageUrl { get; set; } = string.Empty;
 
         public int Likes { get; set; } = 0;
-        public bool Approved { get; set; } = false;
 
-        public required string UploadedBy { get; set; }  // username or user ID
-        public DateTime UploadedAt { get; set; } = DateTime.UtcNow;
+        public bool IsApproved { get; set; } = false;
+
+        [Required]
+        public string UserId { get; set; } = string.Empty;  // or rename to UploadedBy if needed
+
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 }
