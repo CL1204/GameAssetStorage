@@ -66,7 +66,6 @@ namespace GameAssetStorage.Services
                 {
                     username = username.ToLower(),
                     password = BCrypt.Net.BCrypt.EnhancedHashPassword(password, 10),
-                    created_at = DateTime.UtcNow
                 };
 
                 await _userRepository.AddUser(newUser);
