@@ -63,7 +63,8 @@ namespace GameAssetStorage.Controllers
                     loginDto.password);
 
                 if (user == null)
-                    return Unauthorized("Invalid username or password");
+                    return Unauthorized(new { message = "Invalid username or password" });
+
 
                 var claims = new List<Claim>
                 {
@@ -94,7 +95,7 @@ namespace GameAssetStorage.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error during login");
-                return StatusCode(500, "An error occurred during login");
+                return StatusCode(500, new { message = "An error occurred during login" });
             }
         }
 
