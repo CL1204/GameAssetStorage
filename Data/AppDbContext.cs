@@ -15,11 +15,10 @@ namespace GameAssetStorage.Data
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             // Avoid creating the Users table
-            modelBuilder.Entity<User>().ToTable("users"); // Explicitly define the table name
+            modelBuilder.Entity<User>().ToTable("users", t => t.ExcludeFromMigrations()); // Explicitly define the table name
             modelBuilder.Entity<User>().Property(u => u.Id).HasColumnName("id");
             modelBuilder.Entity<User>().Property(u => u.username).HasColumnName("username");
             modelBuilder.Entity<User>().Property(u => u.password).HasColumnName("password");
-            //modelBuilder.Entity<User>().Property(u => u.created_at).HasColumnName("created_at");
             modelBuilder.Entity<User>().Property(u => u.is_admin).HasColumnName("is_admin");
             modelBuilder.Entity<User>().Property(u => u.is_banned).HasColumnName("is_banned");
 
