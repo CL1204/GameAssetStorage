@@ -133,7 +133,6 @@ namespace GameAssetStorage.Controllers
             });
         }
 
-        // 🔍 Debug: Check DB connectivity and users
         [HttpGet("debug-users")]
         public async Task<IActionResult> DebugUsers()
         {
