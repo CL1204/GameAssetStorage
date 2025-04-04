@@ -10,59 +10,61 @@ using System.IO;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configure PostgreSQL Database
+// PostgreSQL Database
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Register Cloudinary service
+// Cloudinary
 builder.Services.AddSingleton<CloudinaryService>();
 
-// Data Protection (store keys in /app/keys folder inside container)
+// Data Protection Keys
 builder.Services.AddDataProtection()
     .PersistKeysToFileSystem(new DirectoryInfo("/app/keys"))
     .SetApplicationName("GameAssetStorage");
 
-// Register Repositories and Services
+// Repositories & Services
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IUserService, UserService>();
 
-// Add Cookie Authentication
+// Cookie Authentication
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
         options.Cookie.HttpOnly = true;
         options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+        options.Cookie.SameSite = SameSiteMode.None; // ✅ Required for cross-site
         options.SlidingExpiration = true;
         options.ExpireTimeSpan = TimeSpan.FromDays(7);
-        options.Cookie.SameSite = SameSiteMode.None;
         options.LoginPath = "/api/auth/login";
         options.AccessDeniedPath = "/api/auth/access-denied";
     });
 
+
+// Authorization
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("AdminOnly", policy =>
         policy.RequireClaim("IsAdmin", "true"));
 });
 
-// Configure CORS for Netlify
+// CORS for Netlify and Render
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("NetlifyCors", policy =>
     {
         policy.WithOrigins(
-                "https://gameassetstorage.netlify.app",
-                "http://localhost:3000",
-                "https://gameasset-backend-aj1g.onrender.com"
-            )
-            .AllowAnyMethod()
-            .AllowAnyHeader()
-            .AllowCredentials()
-            .WithExposedHeaders("Set-Cookie");
+            "https://gameassetstorage.netlify.app",
+            "http://localhost:3000",
+            "https://gameasset-backend-aj1g.onrender.com"
+        )
+        .AllowAnyMethod()
+        .AllowAnyHeader()
+        .AllowCredentials()
+        .WithExposedHeaders("Set-Cookie");
     });
 });
 
-// Add Controllers and Swagger
+// Swagger & Controllers
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
@@ -80,7 +82,7 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// Configure error handling
+// Error Handling
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error");
@@ -102,19 +104,22 @@ using (var scope = app.Services.CreateScope())
     {
         var db = services.GetRequiredService<AppDbContext>();
         db.Database.Migrate();
-        logger.LogInformation("Database migrated successfully.");
+        logger.LogInformation("✅ Database migrated successfully.");
     }
     catch (Exception ex)
     {
-        logger.LogError(ex, "An error occurred while migrating the database.");
+        logger.LogError(ex, "❌ Database migration failed.");
     }
 }
 
-// Render.com port configuration
-app.Urls.Add($"http://*:{Environment.GetEnvironmentVariable("PORT") ?? "7044"}");
+// Render port setup
+if (builder.Environment.IsProduction())
+{
+    app.Urls.Add($"http://*:{Environment.GetEnvironmentVariable("PORT") ?? "7044"}");
+}
 app.UseForwardedHeaders();
 
-// Optional: health check endpoint
+// Health check
 app.MapGet("/health", () => Results.Ok(new
 {
     Status = "Healthy",
@@ -122,7 +127,7 @@ app.MapGet("/health", () => Results.Ok(new
     Environment = app.Environment.EnvironmentName
 }));
 
-// Development tools
+// Swagger
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -133,12 +138,9 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-// Serve static files
+// Static file serving
 var wwwrootPath = Path.Combine(builder.Environment.ContentRootPath, "wwwroot");
-if (!Directory.Exists(wwwrootPath))
-{
-    Directory.CreateDirectory(wwwrootPath);
-}
+if (!Directory.Exists(wwwrootPath)) Directory.CreateDirectory(wwwrootPath);
 
 app.UseStaticFiles(new StaticFileOptions
 {
@@ -150,12 +152,13 @@ app.UseStaticFiles(new StaticFileOptions
     }
 });
 
-// Middleware Pipeline
+// Middleware
 app.UseRouting();
 app.UseCors("NetlifyCors");
 app.UseAuthentication();
 app.UseAuthorization();
-app.MapControllers();
 
+app.MapControllers();
 app.Run();
-Console.WriteLine("App is fully running and listening.");
+
+Console.WriteLine($"✅ App is fully running in {app.Environment.EnvironmentName} on port {Environment.GetEnvironmentVariable("PORT") ?? "7044"}");
