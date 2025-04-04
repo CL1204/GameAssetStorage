@@ -132,6 +132,21 @@ namespace GameAssetStorage.Controllers
                 userId = userId
             });
         }
+
+        // 🔍 Debug: Check DB connectivity and users
+        [HttpGet("debug-users")]
+        public async Task<IActionResult> DebugUsers()
+        {
+            try
+            {
+                var users = await _context.Users.ToListAsync();
+                return Ok(new { count = users.Count, users });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "DB access error", error = ex.Message });
+            }
+        }
     }
 
     public class UserRegistrationDto
