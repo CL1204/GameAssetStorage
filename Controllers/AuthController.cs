@@ -34,22 +34,28 @@ namespace GameAssetStorage.Controllers
             try
             {
                 if (string.IsNullOrWhiteSpace(registrationDto.username))
-                    return BadRequest("Username is required");
+                    return BadRequest(new { message = "Username is required" });
+
                 if (string.IsNullOrWhiteSpace(registrationDto.password))
-                    return BadRequest("Password is required");
+                    return BadRequest(new { message = "Password is required" });
+
                 if (registrationDto.password.Length < 8)
-                    return BadRequest("Password must be at least 8 characters");
+                    return BadRequest(new { message = "Password must be at least 8 characters" });
 
                 var user = await _userService.Register(
                     registrationDto.username,
                     registrationDto.password);
 
-                return Ok(new { user.username });
+                return Ok(new { username = user.username });
+            }
+            catch (ArgumentException argEx)
+            {
+                return BadRequest(new { message = argEx.Message });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error during registration");
-                return BadRequest(ex.Message);
+                _logger.LogError(ex, "Unexpected error during registration");
+                return StatusCode(500, new { message = "An unexpected error occurred during registration" });
             }
         }
 
@@ -65,12 +71,15 @@ namespace GameAssetStorage.Controllers
                 if (user == null)
                     return Unauthorized(new { message = "Invalid username or password" });
 
+                if (user.is_banned)
+                    return Forbid("Account is banned");
 
                 var claims = new List<Claim>
                 {
                     new Claim(ClaimTypes.Name, user.username),
                     new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                    new Claim("created_at", user.created_at.ToString("O"))
+                    new Claim("is_admin", user.is_admin.ToString()),
+                    new Claim("is_banned", user.is_banned.ToString())
                 };
 
                 var claimsIdentity = new ClaimsIdentity(
@@ -87,15 +96,15 @@ namespace GameAssetStorage.Controllers
 
                 return Ok(new
                 {
-                    Message = "Logged in successfully",
+                    message = "Logged in successfully",
                     username = user.username,
                     isAdmin = user.is_admin
                 });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error during login");
-                return StatusCode(500, new { message = "An error occurred during login" });
+                _logger.LogError(ex, "Unexpected error during login");
+                return StatusCode(500, new { message = "An unexpected error occurred during login" });
             }
         }
 
@@ -104,7 +113,7 @@ namespace GameAssetStorage.Controllers
         public async Task<IActionResult> Logout()
         {
             await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-            return Ok(new { Message = "Logged out successfully" });
+            return Ok(new { message = "Logged out successfully" });
         }
 
         [HttpGet("check-auth")]
@@ -115,25 +124,25 @@ namespace GameAssetStorage.Controllers
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             if (username == null || userId == null)
-                return Unauthorized();
+                return Unauthorized(new { message = "Unauthorized access" });
 
             return Ok(new
             {
                 username = username,
-                UserId = userId
+                userId = userId
             });
         }
     }
 
     public class UserRegistrationDto
     {
-        public required string username { get; set; } = string.Empty;
-        public required string password { get; set; } = string.Empty;
+        public required string username { get; set; }
+        public required string password { get; set; }
     }
 
     public class UserLoginDto
     {
-        public required string username { get; set; } = string.Empty;
-        public required string password { get; set; } = string.Empty;
+        public required string username { get; set; }
+        public required string password { get; set; }
     }
 }
