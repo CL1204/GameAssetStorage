@@ -1,5 +1,4 @@
-﻿using BCrypt.Net;
-using GameAssetStorage.Models;
+﻿using GameAssetStorage.Models;
 using GameAssetStorage.Repositories;
 using Microsoft.Extensions.Logging;
 using System;
@@ -32,7 +31,8 @@ namespace GameAssetStorage.Services
                     return null;
                 }
 
-                if (!BCrypt.Net.BCrypt.EnhancedVerify(password, user.password))
+                // TEMPORARY: plaintext check only for existing DB records
+                if (user.password != password)
                 {
                     _logger.LogWarning("Invalid password for user: {username}", username);
                     return null;
@@ -65,7 +65,7 @@ namespace GameAssetStorage.Services
                 var newUser = new User
                 {
                     username = username.ToLower(),
-                    password = BCrypt.Net.BCrypt.EnhancedHashPassword(password, 10),
+                    password = password // plain text for now (NOT secure)
                 };
 
                 await _userRepository.AddUser(newUser);
