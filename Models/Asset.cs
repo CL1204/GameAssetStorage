@@ -1,4 +1,7 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace GameAssetStorage.Models
 {
@@ -17,12 +20,22 @@ namespace GameAssetStorage.Models
         [Required]
         public string ImageUrl { get; set; } = string.Empty;
 
+        [Required]
+        public string FileUrl { get; set; } = string.Empty;
+
+        [Required]
+        public string Category { get; set; } = string.Empty;
+
+        public List<string> Tags { get; set; } = new();
+
         public int Likes { get; set; } = 0;
+
+        public int Downloads { get; set; } = 0;
 
         public bool IsApproved { get; set; } = false;
 
         [Required]
-        public string UserId { get; set; } = string.Empty;  // or rename to UploadedBy if needed
+        public string UserId { get; set; } = string.Empty;
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
