@@ -122,6 +122,7 @@ namespace GameAssetStorage.Controllers
         {
             var username = User.Identity?.Name;
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var isAdmin = User.FindFirstValue("is_admin") == "True";
 
             if (username == null || userId == null)
                 return Unauthorized(new { message = "Unauthorized access" });
@@ -129,8 +130,29 @@ namespace GameAssetStorage.Controllers
             return Ok(new
             {
                 username = username,
-                userId = userId
+                userId = userId,
+                isAdmin = isAdmin
             });
+        }
+
+        [HttpPost("edit-profile")]
+        [Authorize]
+        public async Task<IActionResult> EditProfile([FromBody] EditProfileDto dto)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId == null) return Unauthorized(new { message = "Unauthorized" });
+
+            var user = await _context.Users.FindAsync(int.Parse(userId));
+            if (user == null) return NotFound(new { message = "User not found" });
+
+            if (!string.IsNullOrWhiteSpace(dto.username))
+                user.username = dto.username;
+
+            if (!string.IsNullOrWhiteSpace(dto.password))
+                user.password = BCrypt.Net.BCrypt.HashPassword(dto.password);
+
+            await _context.SaveChangesAsync();
+            return Ok(new { message = "Profile updated successfully." });
         }
 
         [HttpGet("debug-users")]
@@ -158,5 +180,11 @@ namespace GameAssetStorage.Controllers
     {
         public required string username { get; set; }
         public required string password { get; set; }
+    }
+
+    public class EditProfileDto
+    {
+        public string? username { get; set; }
+        public string? password { get; set; }
     }
 }
