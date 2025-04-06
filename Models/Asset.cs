@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -26,7 +25,9 @@ namespace GameAssetStorage.Models
         [Required]
         public string Category { get; set; } = string.Empty;
 
-        public List<string> Tags { get; set; } = new();
+        // ✅ Use PostgreSQL array mapping
+        [Column(TypeName = "text[]")]
+        public string[] Tags { get; set; } = Array.Empty<string>();
 
         public int Likes { get; set; } = 0;
 
