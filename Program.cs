@@ -1,5 +1,4 @@
-﻿// Updated program.cs
-using GameAssetStorage.Data;
+﻿using GameAssetStorage.Data;
 using GameAssetStorage.Repositories;
 using GameAssetStorage.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -47,19 +46,17 @@ builder.Services.AddAuthorization(options =>
         policy.RequireClaim("IsAdmin", "true"));
 });
 
-// CORS
+// ✅ Enhanced CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("NetlifyCors", policy =>
     {
-        policy.WithOrigins(
-            "https://gameassetstorage.netlify.app",
-            "http://localhost:3000",
-            "https://gameasset-backend-aj1g.onrender.com")
-        .AllowAnyMethod()
-        .AllowAnyHeader()
-        .AllowCredentials()
-        .WithExposedHeaders("Set-Cookie");
+        policy
+            .SetIsOriginAllowed(_ => true) // ✅ Allow dynamic Netlify subdomains & local dev
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials()
+            .WithExposedHeaders("Set-Cookie");
     });
 });
 
@@ -81,10 +78,12 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// Global Request Logger (for debugging CORS issues)
+// 🔍 Log requests for debugging CORS
 app.Use(async (context, next) =>
 {
     Console.WriteLine($"[Request] {context.Request.Method} {context.Request.Path}");
+    if (context.Request.Headers.ContainsKey("Origin"))
+        Console.WriteLine($"🌐 Origin: {context.Request.Headers["Origin"]}");
     await next();
 });
 
@@ -101,7 +100,7 @@ if (!app.Environment.IsDevelopment())
     });
 }
 
-// Auto-migrate DB
+// ✅ DB Migration Catch Stack Trace
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
@@ -114,6 +113,7 @@ using (var scope = app.Services.CreateScope())
     catch (Exception ex)
     {
         Console.WriteLine($"❌ Migration failed: {ex.Message}");
+        Console.WriteLine(ex.StackTrace);
     }
 }
 
@@ -124,7 +124,7 @@ if (builder.Environment.IsProduction())
 }
 app.UseForwardedHeaders();
 
-// Health check endpoint
+// Health Check
 app.MapGet("/health", () => Results.Ok(new
 {
     Status = "Healthy",
@@ -132,6 +132,7 @@ app.MapGet("/health", () => Results.Ok(new
     Environment = app.Environment.EnvironmentName
 }));
 
+// Swagger
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -156,13 +157,12 @@ app.UseStaticFiles(new StaticFileOptions
     }
 });
 
-// Middleware order
+// ✅ Middleware Order
 app.UseRouting();
-app.UseCors("NetlifyCors");
+app.UseCors("NetlifyCors"); // ✅ MUST be before auth
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Controllers
 app.MapControllers();
 app.Run();
 
