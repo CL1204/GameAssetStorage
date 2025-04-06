@@ -34,26 +34,29 @@ public class AssetController : ControllerBase
         if (string.IsNullOrWhiteSpace(title) || string.IsNullOrWhiteSpace(category))
             return BadRequest("Title and category are required.");
 
-        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
-        if (string.IsNullOrEmpty(userId))
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+        if (userIdClaim == null || string.IsNullOrEmpty(userIdClaim.Value))
             return Unauthorized("Invalid user.");
+
+        var userId = userIdClaim.Value;
 
         try
         {
-            string imageUrl = await _cloudinaryService.UploadImageAsync(file);
+            var imageUrl = await _cloudinaryService.UploadImageAsync(file);
             if (string.IsNullOrEmpty(imageUrl))
-                return StatusCode(500, "Failed to upload image to Cloudinary.");
+                return StatusCode(500, "Cloudinary upload failed.");
 
             var asset = new Asset
             {
                 Title = title,
-                Description = description,
+                Description = description ?? "",
                 Category = category.ToLower(),
                 ImageUrl = imageUrl,
                 FileUrl = imageUrl,
-                Tags = tags.ToArray(),
+                Tags = tags?.ToArray() ?? Array.Empty<string>(),
                 UserId = userId,
-                IsApproved = false
+                IsApproved = false,
+                CreatedAt = DateTime.UtcNow
             };
 
             _context.Assets.Add(asset);
@@ -63,7 +66,7 @@ public class AssetController : ControllerBase
         }
         catch (Exception ex)
         {
-            Console.WriteLine("❌ Upload error: " + ex);
+            Console.WriteLine("❌ Upload error: " + ex.Message);
             return StatusCode(500, "Server error during upload.");
         }
     }
@@ -90,15 +93,5 @@ public class AssetController : ControllerBase
         asset.Downloads++;
         await _context.SaveChangesAsync();
         return Ok(new { message = "Download recorded", downloads = asset.Downloads });
-    }
-
-    [HttpGet("approved")]
-    public async Task<IActionResult> GetApprovedAssets()
-    {
-        var approvedAssets = await _context.Assets
-            .Where(a => a.IsApproved)
-            .ToListAsync();
-
-        return Ok(approvedAssets);
     }
 }
