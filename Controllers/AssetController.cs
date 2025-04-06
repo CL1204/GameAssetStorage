@@ -34,13 +34,15 @@ public class AssetController : ControllerBase
         if (string.IsNullOrWhiteSpace(title) || string.IsNullOrWhiteSpace(category))
             return BadRequest("Title and category are required.");
 
-        string userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
         if (string.IsNullOrEmpty(userId))
             return Unauthorized("Invalid user.");
 
         try
         {
             string imageUrl = await _cloudinaryService.UploadImageAsync(file);
+            if (string.IsNullOrEmpty(imageUrl))
+                return StatusCode(500, "Failed to upload image to Cloudinary.");
 
             var asset = new Asset
             {
@@ -49,7 +51,7 @@ public class AssetController : ControllerBase
                 Category = category.ToLower(),
                 ImageUrl = imageUrl,
                 FileUrl = imageUrl,
-                Tags = tags.ToArray(), // ✅ Store as string[]
+                Tags = tags.ToArray(),
                 UserId = userId,
                 IsApproved = false
             };
@@ -61,7 +63,7 @@ public class AssetController : ControllerBase
         }
         catch (Exception ex)
         {
-            Console.WriteLine("❌ Upload error: " + ex.Message);
+            Console.WriteLine("❌ Upload error: " + ex);
             return StatusCode(500, "Server error during upload.");
         }
     }
@@ -88,5 +90,15 @@ public class AssetController : ControllerBase
         asset.Downloads++;
         await _context.SaveChangesAsync();
         return Ok(new { message = "Download recorded", downloads = asset.Downloads });
+    }
+
+    [HttpGet("approved")]
+    public async Task<IActionResult> GetApprovedAssets()
+    {
+        var approvedAssets = await _context.Assets
+            .Where(a => a.IsApproved)
+            .ToListAsync();
+
+        return Ok(approvedAssets);
     }
 }
