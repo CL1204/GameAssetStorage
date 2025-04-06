@@ -10,44 +10,43 @@ using System.IO;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// PostgreSQL Database
+// PostgreSQL DB
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Cloudinary
+// Cloudinary Service
 builder.Services.AddSingleton<CloudinaryService>();
 
-// Data Protection Keys
+// Data Protection Keys (for persistent auth cookies)
 builder.Services.AddDataProtection()
     .PersistKeysToFileSystem(new DirectoryInfo("/app/keys"))
     .SetApplicationName("GameAssetStorage");
 
-// Repositories & Services
+// Repositories + Services
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IUserService, UserService>();
 
-// Cookie Authentication
+// Cookie Authentication Setup
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
         options.Cookie.HttpOnly = true;
         options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-        options.Cookie.SameSite = SameSiteMode.None; // ✅ Required for cross-site
+        options.Cookie.SameSite = SameSiteMode.None; // ✅ For cross-origin (Netlify → Render)
         options.SlidingExpiration = true;
         options.ExpireTimeSpan = TimeSpan.FromDays(7);
         options.LoginPath = "/api/auth/login";
         options.AccessDeniedPath = "/api/auth/access-denied";
     });
 
-
-// Authorization
+// Role-based Policies
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("AdminOnly", policy =>
         policy.RequireClaim("IsAdmin", "true"));
 });
 
-// CORS for Netlify and Render
+// CORS Setup for frontend + backend
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("NetlifyCors", policy =>
@@ -64,7 +63,7 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Swagger & Controllers
+// Swagger
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
@@ -82,7 +81,7 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// Error Handling
+// Error Handling + Security Headers
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error");
@@ -95,31 +94,30 @@ if (!app.Environment.IsDevelopment())
     });
 }
 
-// Auto-apply migrations
+// DB Migration on Startup
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
-    var logger = services.GetRequiredService<ILogger<Program>>();
     try
     {
         var db = services.GetRequiredService<AppDbContext>();
         db.Database.Migrate();
-        logger.LogInformation("✅ Database migrated successfully.");
+        Console.WriteLine("✅ Database migrated successfully.");
     }
     catch (Exception ex)
     {
-        logger.LogError(ex, "❌ Database migration failed.");
+        Console.WriteLine($"❌ Migration failed: {ex.Message}");
     }
 }
 
-// Render port setup
+// Set Render port
 if (builder.Environment.IsProduction())
 {
     app.Urls.Add($"http://*:{Environment.GetEnvironmentVariable("PORT") ?? "7044"}");
 }
 app.UseForwardedHeaders();
 
-// Health check
+// Health Check Endpoint
 app.MapGet("/health", () => Results.Ok(new
 {
     Status = "Healthy",
@@ -127,7 +125,7 @@ app.MapGet("/health", () => Results.Ok(new
     Environment = app.Environment.EnvironmentName
 }));
 
-// Swagger
+// Swagger (Dev only)
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -138,7 +136,7 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-// Static file serving
+// Static Assets
 var wwwrootPath = Path.Combine(builder.Environment.ContentRootPath, "wwwroot");
 if (!Directory.Exists(wwwrootPath)) Directory.CreateDirectory(wwwrootPath);
 
@@ -152,13 +150,15 @@ app.UseStaticFiles(new StaticFileOptions
     }
 });
 
-// Middleware
+// Middleware Order
 app.UseRouting();
 app.UseCors("NetlifyCors");
 app.UseAuthentication();
 app.UseAuthorization();
 
+// Routes
 app.MapControllers();
 app.Run();
 
+// ✅ App running confirmation
 Console.WriteLine($"✅ App is fully running in {app.Environment.EnvironmentName} on port {Environment.GetEnvironmentVariable("PORT") ?? "7044"}");

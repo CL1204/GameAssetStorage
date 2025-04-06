@@ -1,10 +1,10 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Threading.Tasks;
 using GameAssetStorage.Services;
 using GameAssetStorage.Data;
 using GameAssetStorage.Models;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 [ApiController]
 [Route("api/assets")]
@@ -19,17 +19,42 @@ public class AssetController : ControllerBase
         _context = context;
     }
 
+    [Authorize]
     [HttpPost("upload")]
-    public async Task<IActionResult> UploadFile([FromForm] IFormFile file)
+    public async Task<IActionResult> UploadAsset(
+        [FromForm] IFormFile file,
+        [FromForm] string title,
+        [FromForm] string description,
+        [FromForm] string category,
+        [FromForm] List<string> tags)
     {
         if (file == null || file.Length == 0)
-        {
             return BadRequest("No file uploaded.");
-        }
 
-        var fileUrl = await _cloudinaryService.UploadImageAsync(file);
+        if (string.IsNullOrEmpty(title) || string.IsNullOrEmpty(category))
+            return BadRequest("Missing required fields.");
 
-        return Ok(new { Url = fileUrl });
+        var imageUrl = await _cloudinaryService.UploadImageAsync(file);
+
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userId)) return Unauthorized("Invalid user.");
+
+        var asset = new Asset
+        {
+            Title = title,
+            Description = description,
+            Category = category.ToLower(),
+            ImageUrl = imageUrl,
+            FileUrl = imageUrl,
+            Tags = tags.ToArray(), // ✅ Fixed here
+            UserId = userId,
+            IsApproved = false
+        };
+
+        _context.Assets.Add(asset);
+        await _context.SaveChangesAsync();
+
+        return Ok(new { message = "Asset uploaded and pending approval." });
     }
 
     [Authorize]
@@ -39,7 +64,7 @@ public class AssetController : ControllerBase
         var asset = await _context.Assets.FindAsync(id);
         if (asset == null) return NotFound("Asset not found.");
 
-        asset.Likes++; // ✅ Fixed casing
+        asset.Likes++;
         await _context.SaveChangesAsync();
         return Ok(new { message = "Liked!", likes = asset.Likes });
     }
@@ -51,16 +76,8 @@ public class AssetController : ControllerBase
         var asset = await _context.Assets.FindAsync(id);
         if (asset == null) return NotFound("Asset not found.");
 
-        asset.Downloads++; // ✅ Fixed casing
+        asset.Downloads++;
         await _context.SaveChangesAsync();
         return Ok(new { message = "Download recorded", downloads = asset.Downloads });
-    }
-
-    [Authorize]
-    [HttpGet("secure-data")]
-    public IActionResult GetSecureData()
-    {
-        Console.WriteLine("✅ Secure Data endpoint accessed!");
-        return Ok(new { message = "You have accessed a protected endpoint!" });
     }
 }

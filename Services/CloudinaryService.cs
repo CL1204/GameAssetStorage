@@ -1,8 +1,6 @@
 ﻿using CloudinaryDotNet;
 using CloudinaryDotNet.Actions;
 using Microsoft.Extensions.Configuration;
-using Npgsql.BackendMessages;
-using System.Security.Principal;
 
 namespace GameAssetStorage.Services
 {
@@ -24,17 +22,20 @@ namespace GameAssetStorage.Services
         public async Task<string> UploadImageAsync(IFormFile file)
         {
             if (file == null || file.Length == 0)
-                return null;
+                return string.Empty;
 
             await using var stream = file.OpenReadStream();
+
             var uploadParams = new ImageUploadParams
             {
                 File = new FileDescription(file.FileName, stream),
-                Folder = "gameassets"
+                Folder = "gameassets",
+                UseFilename = true,
+                UniqueFilename = true
             };
 
-            var uploadResult = await _cloudinary.UploadAsync(uploadParams);
-            return uploadResult.SecureUrl.ToString();
+            var result = await _cloudinary.UploadAsync(uploadParams);
+            return result.SecureUrl?.ToString() ?? string.Empty;
         }
     }
 }
