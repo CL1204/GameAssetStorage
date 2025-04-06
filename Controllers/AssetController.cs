@@ -31,30 +31,39 @@ public class AssetController : ControllerBase
         if (file == null || file.Length == 0)
             return BadRequest("No file uploaded.");
 
-        if (string.IsNullOrEmpty(title) || string.IsNullOrEmpty(category))
-            return BadRequest("Missing required fields.");
+        if (string.IsNullOrWhiteSpace(title) || string.IsNullOrWhiteSpace(category))
+            return BadRequest("Title and category are required.");
 
-        var imageUrl = await _cloudinaryService.UploadImageAsync(file);
+        string userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized("Invalid user.");
 
-        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (string.IsNullOrEmpty(userId)) return Unauthorized("Invalid user.");
-
-        var asset = new Asset
+        try
         {
-            Title = title,
-            Description = description,
-            Category = category.ToLower(),
-            ImageUrl = imageUrl,
-            FileUrl = imageUrl,
-            Tags = tags.ToArray(), // ✅ Fixed here
-            UserId = userId,
-            IsApproved = false
-        };
+            string imageUrl = await _cloudinaryService.UploadImageAsync(file);
 
-        _context.Assets.Add(asset);
-        await _context.SaveChangesAsync();
+            var asset = new Asset
+            {
+                Title = title,
+                Description = description,
+                Category = category.ToLower(),
+                ImageUrl = imageUrl,
+                FileUrl = imageUrl,
+                Tags = tags.ToArray(), // ✅ Store as string[]
+                UserId = userId,
+                IsApproved = false
+            };
 
-        return Ok(new { message = "Asset uploaded and pending approval." });
+            _context.Assets.Add(asset);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Asset uploaded and pending approval." });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("❌ Upload error: " + ex.Message);
+            return StatusCode(500, "Server error during upload.");
+        }
     }
 
     [Authorize]
