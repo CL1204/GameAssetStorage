@@ -1,4 +1,5 @@
-﻿using GameAssetStorage.Data;
+﻿// Updated program.cs
+using GameAssetStorage.Data;
 using GameAssetStorage.Repositories;
 using GameAssetStorage.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -17,7 +18,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 // Cloudinary Service
 builder.Services.AddSingleton<CloudinaryService>();
 
-// Data Protection Keys (for persistent auth cookies)
+// Data Protection Keys
 builder.Services.AddDataProtection()
     .PersistKeysToFileSystem(new DirectoryInfo("/app/keys"))
     .SetApplicationName("GameAssetStorage");
@@ -26,13 +27,13 @@ builder.Services.AddDataProtection()
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IUserService, UserService>();
 
-// Cookie Authentication Setup
+// Cookie Authentication
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
         options.Cookie.HttpOnly = true;
         options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-        options.Cookie.SameSite = SameSiteMode.None; // ✅ For cross-origin (Netlify → Render)
+        options.Cookie.SameSite = SameSiteMode.None;
         options.SlidingExpiration = true;
         options.ExpireTimeSpan = TimeSpan.FromDays(7);
         options.LoginPath = "/api/auth/login";
@@ -46,7 +47,7 @@ builder.Services.AddAuthorization(options =>
         policy.RequireClaim("IsAdmin", "true"));
 });
 
-// CORS Setup for frontend + backend
+// CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("NetlifyCors", policy =>
@@ -54,8 +55,7 @@ builder.Services.AddCors(options =>
         policy.WithOrigins(
             "https://gameassetstorage.netlify.app",
             "http://localhost:3000",
-            "https://gameasset-backend-aj1g.onrender.com"
-        )
+            "https://gameasset-backend-aj1g.onrender.com")
         .AllowAnyMethod()
         .AllowAnyHeader()
         .AllowCredentials()
@@ -81,7 +81,14 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// Error Handling + Security Headers
+// Global Request Logger (for debugging CORS issues)
+app.Use(async (context, next) =>
+{
+    Console.WriteLine($"[Request] {context.Request.Method} {context.Request.Path}");
+    await next();
+});
+
+// Error Handling
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error");
@@ -94,7 +101,7 @@ if (!app.Environment.IsDevelopment())
     });
 }
 
-// DB Migration on Startup
+// Auto-migrate DB
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
@@ -110,14 +117,14 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// Set Render port
+// Render port setup
 if (builder.Environment.IsProduction())
 {
     app.Urls.Add($"http://*:{Environment.GetEnvironmentVariable("PORT") ?? "7044"}");
 }
 app.UseForwardedHeaders();
 
-// Health Check Endpoint
+// Health check endpoint
 app.MapGet("/health", () => Results.Ok(new
 {
     Status = "Healthy",
@@ -125,7 +132,6 @@ app.MapGet("/health", () => Results.Ok(new
     Environment = app.Environment.EnvironmentName
 }));
 
-// Swagger (Dev only)
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -136,7 +142,7 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-// Static Assets
+// Static file handling
 var wwwrootPath = Path.Combine(builder.Environment.ContentRootPath, "wwwroot");
 if (!Directory.Exists(wwwrootPath)) Directory.CreateDirectory(wwwrootPath);
 
@@ -150,15 +156,14 @@ app.UseStaticFiles(new StaticFileOptions
     }
 });
 
-// Middleware Order
+// Middleware order
 app.UseRouting();
 app.UseCors("NetlifyCors");
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Routes
+// Controllers
 app.MapControllers();
 app.Run();
 
-// ✅ App running confirmation
 Console.WriteLine($"✅ App is fully running in {app.Environment.EnvironmentName} on port {Environment.GetEnvironmentVariable("PORT") ?? "7044"}");
