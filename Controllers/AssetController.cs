@@ -75,13 +75,30 @@ public class AssetController : ControllerBase
     [HttpPost("{id}/like")]
     public async Task<IActionResult> LikeAsset(int id)
     {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized("User not authenticated.");
+
         var asset = await _context.Assets.FindAsync(id);
         if (asset == null) return NotFound("Asset not found.");
 
+        // Check if user already liked
+        bool alreadyLiked = await _context.AssetLikes.AnyAsync(al => al.AssetId == id && al.UserId == userId);
+        if (alreadyLiked)
+            return BadRequest(new { message = "You have already liked this asset." });
+
         asset.Likes++;
+
+        _context.AssetLikes.Add(new AssetLike
+        {
+            AssetId = id,
+            UserId = userId
+        });
+
         await _context.SaveChangesAsync();
         return Ok(new { message = "Liked!", likes = asset.Likes });
     }
+
 
     [Authorize]
     [HttpPost("{id}/download")]
