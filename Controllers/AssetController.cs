@@ -67,7 +67,7 @@ public class AssetController : ControllerBase
         catch (Exception ex)
         {
             Console.WriteLine("❌ Upload error: " + ex.Message);
-            return StatusCode(500, "Server error during upload.");
+            return StatusCode(500, $"Server error: {ex.Message}");
         }
     }
 
