@@ -4,7 +4,7 @@ using GameAssetStorage.Data;
 using Microsoft.EntityFrameworkCore;
 
 [ApiController]
-[Route("api/assets")]
+[Route("api/admin")]
 [Authorize(Roles = "Admin")]
 public class AdminController : ControllerBase
 {
@@ -13,29 +13,6 @@ public class AdminController : ControllerBase
     public AdminController(AppDbContext context)
     {
         _context = context;
-    }
-
-    // GET: api/assets/pending
-    [HttpGet("pending")]
-    public async Task<IActionResult> GetPendingAssets()
-    {
-        var pendingAssets = await _context.Assets
-            .Where(a => !a.IsApproved)
-            .Select(a => new
-            {
-                a.Id,
-                a.Title,
-                a.Category,
-                a.CreatedAt,
-                a.UserId,
-                Username = _context.Users
-                    .Where(u => u.Id.ToString() == a.UserId)
-                    .Select(u => u.username)
-                    .FirstOrDefault() ?? "Unknown"
-            })
-            .ToListAsync();
-
-        return Ok(pendingAssets);
     }
 
 
