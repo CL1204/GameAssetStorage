@@ -355,6 +355,33 @@ select {
         flex-grow: 1;
     }
 
+/* Admin/owner delete asset button */
+.delete-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background-color: #ff4757;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 24px;
+    text-align: center;
+    z-index: 2;
+    box-shadow: 0 0 4px rgba(0,0,0,0.4);
+    transition: transform 0.2s ease;
+}
+
+    .delete-btn:hover {
+        transform: scale(1.1);
+        background-color: #e84150;
+    }
+
+
 /* =====================
    SEARCH BAR 
    ===================== */

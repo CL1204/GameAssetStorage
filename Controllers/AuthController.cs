@@ -72,13 +72,13 @@ namespace GameAssetStorage.Controllers
                     return Unauthorized(new { message = "Invalid username or password" });
 
                 if (user.is_banned)
-                    return Forbid("Account is banned");
+                    return Forbid();
 
                 var claims = new List<Claim>
                 {
                     new Claim(ClaimTypes.Name, user.username),
                     new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                    new Claim("is_admin", user.is_admin.ToString()),
+                    new Claim("IsAdmin", user.is_admin ? "true" : "false"),
                     new Claim("is_banned", user.is_banned.ToString())
                 };
 
@@ -98,7 +98,8 @@ namespace GameAssetStorage.Controllers
                 {
                     message = "Logged in successfully",
                     username = user.username,
-                    isAdmin = user.is_admin
+                    isAdmin = user.is_admin,
+                    userId = user.Id.ToString()
                 });
             }
             catch (Exception ex)
@@ -122,7 +123,7 @@ namespace GameAssetStorage.Controllers
         {
             var username = User.Identity?.Name;
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var isAdmin = User.FindFirstValue("is_admin") == "True";
+            var isAdmin = User.FindFirstValue("IsAdmin") == "true";
 
             if (username == null || userId == null)
                 return Unauthorized(new { message = "Unauthorized access" });

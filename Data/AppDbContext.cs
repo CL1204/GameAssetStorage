@@ -10,10 +10,18 @@ namespace GameAssetStorage.Data
 
         public DbSet<User> Users { get; set; }
         public DbSet<Asset> Assets { get; set; }
+        public DbSet<AssetLike> AssetLikes { get; set; }
         public DbSet<DataProtectionKey> DataProtectionKeys { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            base.OnModelCreating(modelBuilder);
+
+            // Prevent double likes
+            modelBuilder.Entity<AssetLike>()
+                .HasIndex(al => new { al.AssetId, al.UserId })
+                .IsUnique();
+
             // Avoid creating the Users table
             modelBuilder.Entity<User>().ToTable("users", t => t.ExcludeFromMigrations()); // Explicitly define the table name
             modelBuilder.Entity<User>().Property(u => u.Id).HasColumnName("id");

@@ -9,10 +9,18 @@
   <ItemGroup>
     <Content Include="frontend\admin.html" />
     <Content Include="frontend\assets.html" />
+    <Content Include="frontend\bottom-nav.html" />
     <Content Include="frontend\css\styles.css" />
     <Content Include="frontend\dashboard.html" />
+    <Content Include="frontend\js\admin.js" />
+    <Content Include="frontend\js\assets.js" />
+    <Content Include="frontend\js\bottom-nav.js" />
+    <Content Include="frontend\js\dashboard.js" />
+    <Content Include="frontend\js\profile.js" />
     <Content Include="frontend\login.html" />
+    <Content Include="frontend\profile.html" />
     <Content Include="frontend\register.html" />
+    <Content Include="frontend\_redirects" />
   </ItemGroup>
 
   <ItemGroup>
@@ -42,7 +50,6 @@
     <Folder Include="DataMigrations\" />
     <Folder Include="Data\Migrations\" />
     <Folder Include="Migrations\" />
-    <Folder Include="wwwroot\" />
   </ItemGroup>
 
 </Project>

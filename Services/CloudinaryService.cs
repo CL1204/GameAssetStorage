@@ -37,5 +37,30 @@ namespace GameAssetStorage.Services
             var result = await _cloudinary.UploadAsync(uploadParams);
             return result.SecureUrl?.ToString() ?? string.Empty;
         }
+
+        public async Task<bool> DeleteImageAsync(string imageUrl)
+        {
+            try
+            {
+                // Extract public ID from URL, remove folder and extension
+                var uri = new Uri(imageUrl);
+                var parts = uri.AbsolutePath.Split('/'); // /gameassets/filename.jpg
+                var filenameWithExt = parts.Last();       // filename.jpg
+                var filename = filenameWithExt.Split('.').First(); // filename
+                var folder = parts[^2]; // should be "gameassets"
+
+                var publicId = $"{folder}/{filename}";
+
+                var deletionParams = new DeletionParams(publicId);
+                var result = await _cloudinary.DestroyAsync(deletionParams);
+
+                return result.Result == "ok" || result.Result == "not found";
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("❌ Cloudinary delete error: " + ex.Message);
+                return false;
+            }
+        }
     }
 }
