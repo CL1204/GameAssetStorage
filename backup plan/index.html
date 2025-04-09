@@ -1,0 +1,90 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="auth-page">
+    <div class="auth-box">
+        <h2>Register</h2>
+        <form id="registerForm">
+            <input type="text" id="username" placeholder="Username" required minlength="3">
+            <input type="password" id="password" placeholder="Password" required minlength="8">
+            <input type="password" id="confirmPassword" placeholder="Confirm Password" required minlength="8">
+            <button type="submit" id="registerButton">Register</button>
+        </form>
+        <div id="message" class="auth-message"></div>
+        <div class="auth-footer">
+            <span>Already have an account?</span>
+            <a href="login.html" class="text-link">Login</a>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = window.location.hostname.includes("localhost")
+            ? "http://localhost:7044/api/auth"
+            : "https://gameasset-backend-aj1g.onrender.com/api/auth";
+
+        document.getElementById("registerForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const button = document.getElementById("registerButton");
+            const messageEl = document.getElementById("message");
+
+            if (button.disabled) return;
+
+            messageEl.innerText = "";
+            messageEl.className = "auth-message";
+            button.disabled = true;
+            button.textContent = "Creating account...";
+
+            const username = document.getElementById("username").value.trim();
+            const password = document.getElementById("password").value;
+            const confirmPassword = document.getElementById("confirmPassword").value;
+
+            try {
+                if (password !== confirmPassword) {
+                    throw new Error("Passwords do not match");
+                }
+
+                const response = await fetch(`${API_BASE_URL}/register`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
+                    body: JSON.stringify({ username, password })
+                });
+
+                const contentType = response.headers.get("content-type");
+                const data = contentType?.includes("application/json") ? await response.json() : await response.text();
+
+                if (response.ok) {
+                    messageEl.classList.add("success");
+                    messageEl.innerText = "Registration successful! Redirecting...";
+                    setTimeout(() => window.location.href = "login.html", 1500);
+                } else {
+                    throw new Error(data.message || "Registration failed");
+                }
+
+            } catch (error) {
+                messageEl.classList.add("error");
+                messageEl.innerText = error.message;
+                button.disabled = false;
+                button.textContent = "Register";
+            }
+        });
+
+        document.getElementById("confirmPassword").addEventListener("input", function () {
+            const messageEl = document.getElementById("message");
+            const password = document.getElementById("password").value;
+            if (this.value && password !== this.value) {
+                messageEl.classList.add("error");
+                messageEl.innerText = "Passwords do not match";
+            } else if (messageEl.innerText === "Passwords do not match") {
+                messageEl.innerText = "";
+                messageEl.className = "auth-message";
+            }
+        });
+    </script>
+</body>
+</html>

@@ -61,7 +61,7 @@ builder.Services.AddCors(options =>
 });
 
 // Swagger
-builder.Services.AddControllers();
+builder.Services.AddControllersWithViews();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -168,8 +168,12 @@ app.UseRouting();
 app.UseCors("NetlifyCors"); // ✅ MUST be before auth
 app.UseAuthentication();
 app.UseAuthorization();
+app.MapControllerRoute(
+    name: "default",
+    pattern: "{controller=Home}/{action=Index}/{id?}");
 
-app.MapControllers();
+app.MapControllers(); // This stays too, for API endpoints
+
 app.Run();
 
 Console.WriteLine($"✅ App is fully running in {app.Environment.EnvironmentName} on port {Environment.GetEnvironmentVariable("PORT") ?? "7044"}");

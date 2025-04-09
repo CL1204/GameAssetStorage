@@ -20,8 +20,5 @@ Migrations/
 *.db
 *.sqlite3
 
-## Frontend ##
-frontend/*
-!frontend/css/
-frontend/css/*
-!frontend/css/styles.css
+## REMOVE frontend ignores ##
+# (delete the entire frontend/* section below this line)

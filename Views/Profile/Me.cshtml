@@ -1,0 +1,39 @@
+﻿@{
+    ViewData["Title"] = "My Profile";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container">
+    <h2 id="usernameDisplay">@Username</h2>
+
+    <button class="action-btn" onclick="toggleEditProfile()">Edit Profile</button>
+
+    <div id="editProfileForm" class="dashboard-section" style="display:none;">
+        <h3>Edit Profile</h3>
+        <form id="editForm">
+            <input type="text" id="newUsername" placeholder="New Username" required />
+            <input type="password" id="newPassword" placeholder="New Password" required minlength="8" />
+            <button type="submit">Save Changes</button>
+        </form>
+        <div class="auth-message" id="editMessage"></div>
+    </div>
+
+    <section class="dashboard-section">
+        <h3>⭐ Liked Assets</h3>
+        <div id="likedAssets" class="assets-grid"></div>
+        <p id="noLiked" style="text-align: center; display: none;">No liked posts yet.</p>
+    </section>
+
+    <section class="dashboard-section">
+        <h3>📁 Uploaded Assets</h3>
+        <div id="uploadedAssets" class="assets-grid"></div>
+        <p id="noUploads" style="text-align: center; display: none;">No posts yet.</p>
+    </section>
+
+    <button class="logout-pill" onclick="logout()">Logout</button>
+</div>
+
+@section Scripts {
+    <script src="~/frontend/js/bottom-nav.js"></script>
+    <script src="~/frontend/js/profile.js"></script>
+}

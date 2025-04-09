@@ -2,15 +2,12 @@
 
 namespace GameAssetStorage.Controllers
 {
-    [ApiController]
-    [Route("/")]
-    public class RootController : ControllerBase
+    public class RootController : Controller
     {
-        [HttpGet]
-        public IActionResult Get()
+        [HttpGet("/")]
+        public IActionResult Index()
         {
-            Console.WriteLine("Health check hit"); // 🟡 Add this line
-            return Ok("Backend is running.");
+            return Redirect("/dashboard");
         }
     }
 }

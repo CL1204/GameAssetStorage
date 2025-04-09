@@ -1,0 +1,83 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Panel</title>
+    <link rel="stylesheet" href="css/styles.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
+</head>
+<body class="dark-mode">
+    <!-- Top Navbar -->
+    <nav class="navbar">
+        <div class="logo">
+            <span class="site-title">Game Asset Storage</span>
+            <span class="admin-badge">Admin</span>
+        </div>
+        <span id="userLabel" class="user-label"></span>
+    </nav>
+
+    <!-- Admin Sections -->
+    <div class="container admin-container">
+        <div class="admin-section" id="pendingSection">
+            <h2>Pending Approval</h2>
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Asset</th>
+                        <th>Category</th>
+                        <th>Uploaded By</th>
+                        <th>Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="pendingAssets"></tbody>
+            </table>
+        </div>
+
+        <div class="admin-section" id="usersSection" style="display: none;">
+            <h2>User Management</h2>
+            <input type="text" id="userSearch" placeholder="Search users..." oninput="searchUsers()" />
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Username</th>
+                        <th>Joined</th>
+                        <th>Status</th>
+                        <th>Role</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="usersList"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Asset Modal -->
+    <div id="assetModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeAssetModal()">&times;</span>
+            <h3 id="modalAssetTitle"></h3>
+            <img id="modalAssetImage" src="" alt="Asset Preview" style="max-width: 100%; border-radius: 12px; margin: 10px 0;" />
+            <p id="modalAssetDescription"></p>
+        </div>
+    </div>
+
+    <!-- User Modal -->
+    <div id="userModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeUserModal()">&times;</span>
+            <h3>User Details</h3>
+            <p><strong>Username:</strong> <span id="modalUsername"></span></p>
+            <p><strong>Status:</strong> <span id="modalStatus"></span></p>
+            <p><strong>Role:</strong> <span id="modalRole"></span></p>
+            <button class="action-btn" onclick="promoteToAdmin()">Promote to Admin</button>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation (Injected via JS) -->
+    <nav id="bottomNavContainer"></nav>
+    <script src="js/bottom-nav.js"></script>
+    <script src="js/admin.js"></script>
+</body>
+</html>
