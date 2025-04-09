@@ -61,7 +61,7 @@ builder.Services.AddCors(options =>
 });
 
 // Swagger
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews(); // Use AddControllersWithViews() for MVC
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -157,24 +157,18 @@ app.UseStaticFiles(new StaticFileOptions
     }
 });
 
-app.Use(async (context, next) =>
-{
-    Console.WriteLine($"Request: {context.Request.Method} {context.Request.Path}");
-    await next();
-});
-
-
 // ✅ Middleware Order
 app.UseRouting();
-app.UseStaticFiles();
+app.UseStaticFiles(); // Ensure static files middleware is before authentication
 app.UseCors("NetlifyCors"); // ✅ MUST be before auth
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Default route setup for MVC
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Dashboard}/{action=Index}/{id?}");
 
-app.UseStaticFiles();
 app.MapControllers(); // This stays too, for API endpoints
 
 app.Run();

@@ -10,9 +10,8 @@ using System.Security.Claims;
 
 namespace GameAssetStorage.Controllers
 {
-    [ApiController]
     [Route("api/auth")]
-    public class AuthController : ControllerBase
+    public class AuthController : Controller // Change to Controller (not ControllerBase)
     {
         private readonly AppDbContext _context;
         private readonly ILogger<AuthController> _logger;
