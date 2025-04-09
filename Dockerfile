@@ -15,8 +15,8 @@ FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
 COPY --from=build /app/publish .
 
-# Expose port required by Render
+# Expose dynamic port required by Render
 ENV ASPNETCORE_URLS=http://*:$PORT
-EXPOSE 10000
+EXPOSE $PORT
 
 ENTRYPOINT ["dotnet", "GameAssetStorage.dll"]
