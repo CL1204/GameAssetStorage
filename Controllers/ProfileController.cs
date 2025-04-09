@@ -9,7 +9,8 @@ namespace GameAssetStorage.Controllers
         [HttpGet("/profile")]
         public IActionResult Me()
         {
-            return View("Me"); // renders Views/Profile/Me.cshtml
+            var username = User.Identity.Name;  // Get the username from the logged-in user's identity
+            return View("Me", username);  // Pass the username to the view
         }
     }
 }
