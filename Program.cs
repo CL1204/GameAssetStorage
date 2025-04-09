@@ -163,6 +163,7 @@ app.Use(async (context, next) =>
     await next();
 });
 
+app.UseStaticFiles();
 // ✅ Middleware Order
 app.UseRouting();
 app.UseCors("NetlifyCors"); // ✅ MUST be before auth
@@ -172,7 +173,7 @@ app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Dashboard}/{action=Index}/{id?}");
 
-
+app.UseStaticFiles();
 app.MapControllers(); // This stays too, for API endpoints
 
 app.Run();
