@@ -1,0 +1,35 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Game Asset Storage</title>
+
+    <link rel="stylesheet" href="~/frontend/css/styles.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
+</head>
+<body class="dark-mode">
+
+    <!-- Top Navbar -->
+    <nav class="navbar">
+        <div class="logo">
+            <span class="site-title">GameAssetStorage</span>
+            <span class="admin-badge" id="adminBadge" style="display: none;">Admin</span>
+        </div>
+        <span id="userLabel" class="user-label">@User.Identity?.Name</span>
+    </nav>
+
+    <!-- Main Page Content -->
+    <main>
+        @RenderBody()
+    </main>
+
+    <!-- Bottom Navigation -->
+    <nav id="bottomNavContainer"></nav>
+    <script src="~/frontend/js/bottom-nav.js"></script>
+
+    <!-- Page-Specific Scripts -->
+    @RenderSection("Scripts", required: false)
+
+</body>
+</html>

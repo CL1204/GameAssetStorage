@@ -1,0 +1,56 @@
+﻿@{
+    ViewData["Title"] = "Explore";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container">
+    <div class="main-content">
+        <h2>Explore</h2>
+
+        <input type="text" id="searchBar" placeholder="Search assets..." aria-label="Search assets" />
+
+        <!-- Category Buttons -->
+        <div class="category-nav">
+            <a href="#" class="category-btn active" data-category="characters">Characters</a>
+            <a href="#" class="category-btn" data-category="environment">Environment</a>
+            <a href="#" class="category-btn" data-category="soundtracks">Soundtracks</a>
+        </div>
+
+        <!-- Assets Sections -->
+        <div class="asset-section active" id="characters-section">
+            <div class="assets-grid" id="characters"></div>
+        </div>
+        <div class="asset-section" id="environment-section">
+            <div class="assets-grid" id="environment"></div>
+        </div>
+        <div class="asset-section" id="soundtracks-section">
+            <div class="assets-grid" id="soundtracks"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Upload Panel -->
+<div class="upload-panel" id="uploadPanel" style="display: none;">
+    <h3>Upload New Asset</h3>
+    <form class="upload-form" id="uploadForm">
+        <input type="text" id="assetName" placeholder="Asset Name" required />
+        <select id="assetCategory" required>
+            <option value="">Select Category</option>
+            <option value="characters">Character</option>
+            <option value="environment">Environment</option>
+            <option value="soundtracks">Soundtrack</option>
+        </select>
+        <input type="text" id="tagInput" placeholder="Tags (comma-separated)" />
+        <textarea id="assetDescription" placeholder="Description"></textarea>
+        <div class="file-upload">
+            <label for="assetFile">Choose File:</label>
+            <input type="file" id="assetFile" required />
+        </div>
+        <button type="submit">Upload Asset</button>
+    </form>
+</div>
+
+@section Scripts {
+    <script src="~/frontend/js/bottom-nav.js"></script>
+    <script src="~/frontend/js/assets.js"></script>
+}

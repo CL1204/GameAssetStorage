@@ -1,0 +1,108 @@
+﻿@{
+    ViewData["Title"] = "Dashboard";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<nav class="navbar">
+    <div class="logo">
+        <span class="site-title">GameAssetStorage</span>
+        <span class="admin-badge" id="adminBadge" style="display: none;">Admin</span>
+    </div>
+    <span id="userLabel" class="user-label"></span>
+    <button id="loginBtn" class="login-button" style="display:none;" onclick="window.location.href='/login'">Login</button>
+</nav>
+
+<div class="container">
+    <div class="main-content">
+
+        <!-- Search Bar -->
+        <div class="dashboard-section">
+            <input type="text" id="searchBar" placeholder="Search assets or tags..." aria-label="Search assets" />
+        </div>
+
+        <!-- Top Rated -->
+        <div class="dashboard-section">
+            <h2>🔥 Top Rated</h2>
+            <div class="assets-grid" id="topRatedSection"></div>
+        </div>
+
+        <!-- Discover -->
+        <div class="dashboard-section">
+            <h2>✨ Discover</h2>
+            <div class="assets-grid" id="discoverSection"></div>
+        </div>
+
+    </div>
+</div>
+
+<!-- Upload Panel (toggle by bottom nav only) -->
+<div class="upload-panel" id="uploadPanel" style="display: none;">
+    <h3>Upload New Asset</h3>
+    <form class="upload-form" id="uploadForm">
+        <input type="text" id="assetName" placeholder="Asset Name" required />
+        <select id="assetCategory" required>
+            <option value="">Select Category</option>
+            <option value="characters">Character</option>
+            <option value="environment">Environment</option>
+            <option value="soundtracks">Soundtrack</option>
+        </select>
+        <input type="text" id="tagInput" placeholder="Tags (comma-separated)" />
+        <textarea id="assetDescription" placeholder="Description"></textarea>
+        <div class="file-upload">
+            <label for="assetFile">Choose File:</label>
+            <input type="file" id="assetFile" required />
+        </div>
+        <button type="submit">Upload Asset</button>
+    </form>
+</div>
+
+@section Scripts {
+    <script src="~/frontend/js/bottom-nav.js"></script>
+    <script src="~/frontend/js/dashboard.js"></script>
+    <script>
+        const BASE_URL = window.location.hostname.includes("localhost")
+            ? "http://localhost:7044"
+            : "https://gameasset-backend-aj1g.onrender.com";
+
+        let currentUser = null;
+
+        window.onload = async function () {
+            const label = document.getElementById("userLabel");
+            const loginBtn = document.getElementById("loginBtn");
+
+            try {
+                const res = await fetch(`${BASE_URL}/api/auth/check-auth`, {
+                    credentials: "include"
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    label.textContent = data.username;
+                    currentUser = data;
+
+                    if (data.isAdmin) {
+                        document.getElementById("adminBadge").style.display = "inline";
+                    }
+
+                    localStorage.setItem("username", data.username);
+                } else {
+                    loginBtn.style.display = "inline-block";
+                }
+            } catch {
+                loginBtn.style.display = "inline-block";
+            }
+
+            loadAssets();
+            fetchAllUsernames();
+        };
+
+        // Modify like/upload to block guests
+        document.getElementById("uploadForm").addEventListener("submit", function (e) {
+            if (!currentUser) {
+                e.preventDefault();
+                alert("Please log in to upload assets.");
+                return;
+            }
+        });
+    </script>
+}

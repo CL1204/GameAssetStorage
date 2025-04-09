@@ -7,20 +7,20 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="frontend\admin.html" />
-    <Content Include="frontend\assets.html" />
-    <Content Include="frontend\bottom-nav.html" />
+    <Content Include="backup plan\admin.html" />
+    <Content Include="backup plan\assets.html" />
+    <Content Include="backup plan\bottom-nav.html" />
     <Content Include="frontend\css\styles.css" />
-    <Content Include="frontend\dashboard.html" />
+    <Content Include="backup plan\dashboard.html" />
     <Content Include="frontend\js\admin.js" />
     <Content Include="frontend\js\assets.js" />
     <Content Include="frontend\js\bottom-nav.js" />
     <Content Include="frontend\js\dashboard.js" />
     <Content Include="frontend\js\profile.js" />
-    <Content Include="frontend\login.html" />
-    <Content Include="frontend\profile.html" />
-    <Content Include="frontend\register.html" />
-    <Content Include="frontend\_redirects" />
+    <Content Include="backup plan\login.html" />
+    <Content Include="backup plan\profile.html" />
+    <Content Include="backup plan\index.html" />
+    <Content Include="backup plan\_redirects" />
   </ItemGroup>
 
   <ItemGroup>

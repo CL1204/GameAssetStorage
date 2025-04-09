@@ -1,0 +1,71 @@
+﻿@{
+    ViewData["Title"] = "Login";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="auth-box">
+    <h2>Login</h2>
+    <form id="loginForm">
+        <input type="text" id="username" placeholder="Username" required />
+        <input type="password" id="password" placeholder="Password" required />
+        <button type="submit" id="loginButton">Login</button>
+    </form>
+    <div id="message" class="auth-message"></div>
+    <div class="auth-footer">
+        <span>Don't have an account?</span>
+        <a href="/register" class="text-link">Register</a> <!-- ✅ fixed href -->
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const API_BASE_URL = window.location.hostname.includes("localhost")
+            ? "http://localhost:7044/api/auth"
+            : "https://gameasset-backend-aj1g.onrender.com/api/auth";
+
+        document.getElementById("loginForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const messageEl = document.getElementById("message");
+            const button = document.getElementById("loginButton");
+
+            messageEl.innerText = "";
+            messageEl.className = "auth-message";
+            button.disabled = true;
+            button.textContent = "Logging in...";
+
+            const username = document.getElementById("username").value.trim();
+            const password = document.getElementById("password").value.trim();
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/login`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (response.status === 403) {
+                    throw new Error("Sorry, this account is banned");
+                }
+
+                if (!response.ok) {
+                    throw new Error(data.message || "Login failed");
+                }
+
+                messageEl.classList.add("success");
+                messageEl.innerText = "Login successful! Redirecting...";
+                setTimeout(() => {
+                    window.location.href = data.isAdmin ? "/admin" : "/dashboard"; // ✅ fixed path
+                }, 1200);
+
+            } catch (err) {
+                messageEl.classList.add("error");
+                messageEl.innerText = err.message;
+                button.disabled = false;
+                button.textContent = "Login";
+            }
+        });
+    </script>
+}
