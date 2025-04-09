@@ -28,6 +28,13 @@ namespace GameAssetStorage.Controllers
             _userService = userService;
         }
 
+        // Add this method for handling login page rendering
+        [HttpGet("login")]
+        public IActionResult Login()
+        {
+            return View();  // This should map to Login.cshtml
+        }
+
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] UserRegistrationDto registrationDto)
         {
