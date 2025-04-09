@@ -163,9 +163,10 @@ app.Use(async (context, next) =>
     await next();
 });
 
-app.UseStaticFiles();
+
 // ✅ Middleware Order
 app.UseRouting();
+app.UseStaticFiles();
 app.UseCors("NetlifyCors"); // ✅ MUST be before auth
 app.UseAuthentication();
 app.UseAuthorization();
