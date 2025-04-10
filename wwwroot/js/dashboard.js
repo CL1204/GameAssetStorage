@@ -8,10 +8,10 @@ let currentUser = null;
 
 window.onload = async function () {
     const auth = await fetch(`${BASE_URL}/api/auth/check-auth`, { credentials: "include" });
-    if (!auth.ok) return (window.location.href = "login.html");
-
+    if (!auth.ok) {
+        return (window.location.href = "/login");
+    }
     const data = await auth.json();
-    localStorage.setItem("username", data.username);
     document.getElementById("userLabel").textContent = data.username;
     currentUser = data;
 
@@ -22,6 +22,7 @@ window.onload = async function () {
     loadAssets();
     fetchAllUsernames();
 };
+
 
 document.getElementById("uploadForm").addEventListener("submit", async e => {
     e.preventDefault();
@@ -55,11 +56,17 @@ document.getElementById("uploadForm").addEventListener("submit", async e => {
 });
 
 async function loadAssets() {
-    const res = await fetch(`${BASE_URL}/api/assets/approved`);
-    const assets = await res.json();
-    allAssets = assets;
-    displayTopRated(assets);
-    displayDiscover(assets);
+    try {
+        const res = await fetch(`${BASE_URL}/api/assets/approved`);
+        const assets = await res.json();
+        allAssets = assets;
+        displayTopRated(assets);
+        displayDiscover(assets);
+    } catch (err) {
+        console.error("Error loading assets:", err);
+        alert("Failed to load assets. Please try again later.");
+    }
+
 }
 
 function displayTopRated(assets) {
