@@ -159,7 +159,12 @@ app.UseStaticFiles(new StaticFileOptions
 
 // ✅ Middleware Order
 app.UseRouting();
-app.UseStaticFiles(); // Ensure static files middleware is before authentication
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(Path.Combine(builder.Environment.ContentRootPath, "wwwroot")),
+    RequestPath = ""
+});
+// Ensure static files middleware is before authentication
 app.UseCors("NetlifyCors"); // ✅ MUST be before auth
 app.UseAuthentication();
 app.UseAuthorization();
