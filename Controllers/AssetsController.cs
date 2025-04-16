@@ -3,13 +3,13 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace GameAssetStorage.Controllers
 {
-    [Authorize]
     public class AssetsController : Controller
     {
-        [HttpGet("/assets")]
+        [HttpGet("/Assets/Explore")]
+        [AllowAnonymous] // ✅ allow guests
         public IActionResult Explore()
         {
-            return View("Explore"); // maps to Views/Assets/Explore.cshtml
+            return View();
         }
     }
 }

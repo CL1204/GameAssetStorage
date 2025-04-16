@@ -1,10 +1,11 @@
-﻿@{
+﻿@model string
+@{
     ViewData["Title"] = "My Profile";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
 <div class="container">
-    <h2 id="usernameDisplay">@Model</h2> <!-- Display the passed username here -->
+    <h2 id="usernameDisplay">Welcome, @(string.IsNullOrEmpty(Model) ? "Guest" : Model)!</h2>
 
     <button class="action-btn" onclick="toggleEditProfile()">Edit Profile</button>
 
@@ -19,13 +20,13 @@
     </div>
 
     <section class="dashboard-section">
-        <h3>⭐ Liked Assets</h3>
+        <h3>⭐ Liked Assets <span id="likedCount" style="font-weight: normal; font-size: 0.9em;"></span></h3>
         <div id="likedAssets" class="assets-grid"></div>
         <p id="noLiked" style="text-align: center; display: none;">No liked posts yet.</p>
     </section>
 
     <section class="dashboard-section">
-        <h3>📁 Uploaded Assets</h3>
+        <h3>📁 Uploaded Assets <span id="uploadCount" style="font-weight: normal; font-size: 0.9em;"></span></h3>
         <div id="uploadedAssets" class="assets-grid"></div>
         <p id="noUploads" style="text-align: center; display: none;">No posts yet.</p>
     </section>
@@ -35,5 +36,5 @@
 
 @section Scripts {
     <script src="~/js/bottom-nav.js"></script>
-    <script src="~/js/dashboard.js"></script>
+    <script src="~/js/profile.js"></script>
 }

@@ -7,11 +7,11 @@
     <div class="main-content">
         <h2>Explore</h2>
 
-        <input type="text" id="searchBar" placeholder="Search assets..." aria-label="Search assets" />
+        <input type="text" id="searchBar" placeholder="Search assets or tags..." aria-label="Search assets" />
 
         <!-- Category Buttons -->
         <div class="category-nav">
-            <a href="#" class="category-btn active" data-category="characters">Characters</a>
+            <a href="#" class="category-btn" data-category="characters">Characters</a>
             <a href="#" class="category-btn" data-category="environment">Environment</a>
             <a href="#" class="category-btn" data-category="soundtracks">Soundtracks</a>
         </div>
@@ -50,7 +50,23 @@
     </form>
 </div>
 
+<!-- Comment Discussion Overlay + Modal -->
+<div id="commentOverlay" class="overlay" style="display: none;">
+    <div id="commentModal" class="comment-modal">
+        <div class="left-preview" id="modalPreview"></div>
+        <div class="right-comments">
+            <h3>💬 Discussion</h3>
+            <div class="comment-list" id="discussionComments"></div>
+            <div class="comment-input">
+                <textarea id="newComment" placeholder="Write a comment..."></textarea>
+                <button onclick="submitComment()">Send</button>
+                <button class="close-btn" onclick="closeDiscussion()">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <script src="~/js/bottom-nav.js"></script>
-    <script src="~/js/dashboard.js"></script>
+    <script src="~/js/assets.js"></script>
 }

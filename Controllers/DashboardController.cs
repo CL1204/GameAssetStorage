@@ -1,13 +1,15 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace GameAssetStorage.Controllers
 {
     public class DashboardController : Controller
     {
-        [HttpGet("/dashboard")]
+        [HttpGet("/Dashboard")]
+        [AllowAnonymous] // ✅ allow guests
         public IActionResult Index()
         {
-            return View("Index"); // maps to Views/Dashboard/Index.cshtml
+            return View();
         }
     }
 }

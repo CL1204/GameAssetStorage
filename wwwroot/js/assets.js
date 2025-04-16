@@ -1,243 +1,358 @@
-﻿const BASE_URL = window.location.hostname.includes("localhost")
-    ? "http://localhost:7044"
-    : "https://gameasset-backend-aj1g.onrender.com";
+﻿// ✅ FINAL FIXED assets.js with working category display and comment delete
+
+if (!window.BASE_URL) {
+    window.BASE_URL = window.location.hostname.includes("localhost")
+        ? "http://localhost:7044"
+        : "https://gameasset-backend-aj1g.onrender.com";
+}
+if (!window.currentUser) window.currentUser = null;
 
 let allAssets = [];
-let currentUser = null;
+let allUsernames = [];
+let currentAssetId = null;
 
-window.onload = async () => {
+document.addEventListener("DOMContentLoaded", async () => {
     try {
-        const authRes = await fetch(`${BASE_URL}/api/auth/check-auth`, { credentials: "include" });
-        if (!authRes.ok) throw new Error("Unauthorized");
-        currentUser = await authRes.json();
-
-        const res = await fetch(`${BASE_URL}/api/assets/approved`);
-        if (!res.ok) throw new Error("Failed to load assets");
-        allAssets = await res.json();
-
-        displayAssets(allAssets);
-        setupSearch(allAssets);
-        setupCategoryButtons();
-        showCategory("characters");
-        highlightCategoryButton("characters");
+        const auth = await fetch(`${BASE_URL}/api/auth/check-auth`, { credentials: "include" });
+        if (auth.ok) {
+            const data = await auth.json();
+            window.currentUser = data;
+            document.getElementById("userLabel").textContent = data.username;
+            if (data.isAdmin) document.getElementById("adminBadge").style.display = "inline";
+        } else {
+            window.currentUser = null;
+        }
     } catch (err) {
-        console.error("Failed to fetch assets or auth:", err);
+        console.warn("User not logged in");
+        window.currentUser = null;
     }
 
-    setupUploadHandler();
-};
+    await loadAssets();
 
-function setupUploadHandler() {
-    const uploadForm = document.getElementById("uploadForm");
-    uploadForm?.addEventListener("submit", async e => {
-        e.preventDefault();
-        const file = document.getElementById("assetFile").files[0];
-        const title = document.getElementById("assetName").value;
-        const category = document.getElementById("assetCategory").value;
-        const description = document.getElementById("assetDescription").value;
-        const tags = document.getElementById("tagInput").value.split(",").map(t => t.trim()).filter(Boolean);
+    if (document.getElementById("adminUserTable")) {
+        await fetchAllUsernames();
+    }
+});
 
-        if (!file || !title || !category) {
-            alert("Please complete the form.");
-            return;
+async function loadAssets() {
+    try {
+        const res = await fetch(`${BASE_URL}/api/assets/approved`);
+        const assets = await res.json();
+        allAssets = assets;
+
+        // only call displayByCategory if category containers exist (Explore page)
+        if (document.getElementById("characters")) {
+            displayByCategory(assets);
         }
 
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("title", title);
-        formData.append("description", description);
-        formData.append("category", category);
-        tags.forEach(tag => formData.append("tags", tag));
-
-        try {
-            const res = await fetch(`${BASE_URL}/api/assets/upload`, {
-                method: "POST",
-                body: formData,
-                credentials: "include"
-            });
-
-            if (res.ok) {
-                alert("Upload successful! Awaiting admin approval.");
-                uploadForm.reset();
-                toggleUploadPanel();
-            } else {
-                const errorText = await res.text();
-                console.error("Upload failed:", errorText);
-                alert("Upload failed: " + errorText);
-            }
-
-        } catch (error) {
-            alert("Upload error: " + error.message);
+        if (document.getElementById("topRatedSection")) {
+            displayTopRated(assets);
         }
-    });
-}
-
-function setupCategoryButtons() {
-    document.querySelectorAll(".category-btn").forEach(btn => {
-        btn.addEventListener("click", e => {
-            e.preventDefault();
-            const category = btn.dataset.category;
-            showCategory(category);
-            highlightCategoryButton(category);
-        });
-    });
-}
-
-function highlightCategoryButton(category) {
-    document.querySelectorAll(".category-btn").forEach(btn => {
-        if (btn.dataset.category === category) {
-            btn.classList.add("active", "clicked");
-            setTimeout(() => btn.classList.remove("clicked"), 600);
-        } else {
-            btn.classList.remove("active");
+        if (document.getElementById("discoverSection")) {
+            displayDiscover(assets);
         }
-    });
+    } catch (err) {
+        console.error("Error loading assets:", err);
+        showToast("Failed to load assets. Please try again later.");
+    }
 }
 
-function showCategory(category) {
-    document.querySelectorAll(".asset-section").forEach(section => section.classList.remove("active"));
-    const section = document.getElementById(`${category}-section`);
-    if (section) section.classList.add("active");
-    document.getElementById("searchBar").value = "";
-    searchAssets(category);
-}
-
-function displayAssets(assets) {
-    const categories = {
+function displayByCategory(assets) {
+    const sections = {
         characters: document.getElementById("characters"),
         environment: document.getElementById("environment"),
         soundtracks: document.getElementById("soundtracks")
     };
-    Object.values(categories).forEach(el => el.innerHTML = "");
+
+    Object.values(sections).forEach(section => {
+        if (section) section.innerHTML = "";
+    });
 
     assets.forEach(asset => {
-        const card = document.createElement("div");
-        card.className = "asset-card";
-        card.innerHTML = `
-            <button class="favorite-btn" onclick="likeAsset(${asset.id}, this)">
-              ♥ <span class="favorite-count">${asset.likes}</span>
-            </button>
-            <img src="${asset.imageUrl}" alt="${asset.title}" onerror="this.src='placeholder.jpg'" />
-            <h4>${asset.title}</h4>
-            <p>${asset.description}</p>
-            <small>Tags: ${asset.tags?.join(", ") || "None"}</small>
-            <a class="download-btn" href="#" onclick="downloadAsset(${asset.id}, '${asset.fileUrl}'); return false;">Download</a>
-        `;
+        const section = sections[asset.category];
+        if (section) section.appendChild(createAssetCard(asset));
+    });
+}
 
-        if (currentUser?.isAdmin || currentUser?.userId === asset.userId) {
-            const deleteBtn = document.createElement("button");
-            deleteBtn.textContent = "−";
-            deleteBtn.className = "delete-btn";
-            deleteBtn.title = "Delete Asset";
-            deleteBtn.onclick = () => {
-                if (confirm("Are you sure you want to delete this asset?")) {
-                    deleteAsset(asset.id);
-                }
-            };
-            card.appendChild(deleteBtn);
+function displayTopRated(assets) {
+    const section = document.getElementById("topRatedSection");
+    if (!section) return;
+    section.innerHTML = "";
+    const top3 = [...assets].sort((a, b) => b.likes - a.likes).slice(0, 3);
+    top3.forEach(asset => section.appendChild(createAssetCard(asset)));
+}
+
+function displayDiscover(assets) {
+    const container = document.getElementById("discoverSection");
+    if (!container) return;
+    const shuffled = [...assets].sort(() => 0.5 - Math.random()).slice(0, 10);
+    const loopAssets = [...shuffled, ...shuffled];
+    container.innerHTML = "";
+    loopAssets.forEach(asset => container.appendChild(createAssetCard(asset)));
+}
+
+function createAssetCard(asset) {
+    const card = document.createElement("div");
+    card.className = "asset-card";
+
+    const img = document.createElement("img");
+    img.src = asset.imageUrl;
+    img.alt = asset.title;
+    img.onerror = function () {
+        this.onerror = null;
+        this.src = "/assets/placeholder.jpg";
+    };
+    card.appendChild(img);
+
+    const likeBtn = document.createElement("button");
+    likeBtn.className = "favorite-btn";
+    likeBtn.innerHTML = `♥ <span class="favorite-count">${asset.likes}</span>`;
+    likeBtn.onclick = () => {
+        if (!window.currentUser) {
+            showToast("Please login to like assets.");
+        } else {
+            likeAsset(asset.id, likeBtn);
         }
+    };
+    card.appendChild(likeBtn);
 
-        categories[asset.category]?.appendChild(card);
-    });
+    const title = document.createElement("h4");
+    title.textContent = asset.title;
+    card.appendChild(title);
+
+    const desc = document.createElement("p");
+    desc.textContent = asset.description;
+    card.appendChild(desc);
+
+    const tags = document.createElement("small");
+    tags.textContent = "Tags: " + (asset.tags?.join(", ") || "None");
+    card.appendChild(tags);
+
+    if (window.currentUser?.isAdmin || window.currentUser?.userId == asset.userId) {
+        const del = document.createElement("button");
+        del.textContent = "−";
+        del.className = "delete-btn";
+        del.onclick = () => {
+            showConfirm("Delete this asset?", async () => {
+                const res = await fetch(`${BASE_URL}/api/assets/${asset.id}`, {
+                    method: "DELETE",
+                    credentials: "include"
+                });
+                if (res.ok) {
+                    showToast("Deleted");
+                    await loadAssets();
+                } else {
+                    showToast("Failed to delete.");
+                }
+            });
+        };
+        card.appendChild(del);
+    }
+
+    const commentBtn = document.createElement("button");
+    commentBtn.textContent = "💬";
+    commentBtn.className = "action-btn";
+    commentBtn.onclick = () => openDiscussion(asset.id);
+    card.appendChild(commentBtn);
+
+    return card;
 }
 
-function setupSearch(assets) {
-    const input = document.getElementById("searchBar");
-    input.addEventListener("input", () => {
-        const query = input.value.toLowerCase();
-        const active = document.querySelector(".asset-section.active");
-        const category = active.id.replace("-section", "");
-
-        const filtered = assets.filter(a =>
-            a.category === category &&
-            (a.title.toLowerCase().includes(query) ||
-                a.tags?.some(tag => tag.toLowerCase().includes(query)))
-        );
-
-        const container = document.getElementById(category);
-        container.innerHTML = filtered.length
-            ? ""
-            : "<p>No matching assets found.</p>";
-
-        filtered.forEach(asset => {
-            const card = document.createElement("div");
-            card.className = "asset-card";
-            card.innerHTML = `
-                <button class="favorite-btn" onclick="likeAsset(${asset.id}, this)">
-                  ♥ <span class="favorite-count">${asset.likes}</span>
-                </button>
-                <img src="${asset.imageUrl}" alt="${asset.title}" onerror="this.src='placeholder.jpg'" />
-                <h4>${asset.title}</h4>
-                <p>${asset.description}</p>
-                <small>Tags: ${asset.tags?.join(", ") || "None"}</small>
-                <a class="download-btn" href="#" onclick="downloadAsset(${asset.id}, '${asset.fileUrl}'); return false;">Download</a>
-            `;
-
-            if (currentUser?.isAdmin || currentUser?.userId === asset.userId) {
-                const deleteBtn = document.createElement("button");
-                deleteBtn.textContent = "−";
-                deleteBtn.className = "delete-btn";
-                deleteBtn.title = "Delete Asset";
-                deleteBtn.onclick = () => {
-                    if (confirm("Are you sure you want to delete this asset?")) {
-                        deleteAsset(asset.id);
-                    }
-                };
-                card.appendChild(deleteBtn);
-            }
-
-            container.appendChild(card);
-        });
-    });
-}
-
-async function likeAsset(id, button) {
+async function likeAsset(id, btn) {
     try {
         const res = await fetch(`${BASE_URL}/api/assets/${id}/like`, {
             method: "POST",
             credentials: "include"
         });
+
         if (res.ok) {
-            const data = await res.json();
-            button.querySelector(".favorite-count").textContent = data.likes;
+            const result = await res.json();
+            btn.querySelector(".favorite-count").textContent = result.likes;
+            btn.classList.add("liked");
+        } else if (res.status === 400) {
+            const result = await res.json();
+            showToast(result.message || "Already liked.");
         } else {
-            console.error("Failed to like:", await res.text());
+            showToast("Failed to like asset.");
         }
     } catch (err) {
-        console.error("Error liking asset:", err);
+        console.error("❌ Like request failed:", err);
     }
 }
 
-async function downloadAsset(id, fileUrl) {
+async function fetchAllUsernames() {
     try {
-        await fetch(`${BASE_URL}/api/assets/${id}/download`, {
+        const res = await fetch(`${BASE_URL}/admin/users`, { credentials: "include" });
+        if (!res.ok) throw new Error("Unauthorized");
+        const users = await res.json();
+        allUsernames = users.map(u => u.username.toLowerCase());
+    } catch (err) {
+        console.warn("Fetch users failed:", err);
+    }
+}
+
+document.getElementById("uploadForm")?.addEventListener("submit", async e => {
+    e.preventDefault();
+    if (!window.currentUser) return showToast("Please login to upload assets.");
+
+    const file = document.getElementById("assetFile").files[0];
+    const title = document.getElementById("assetName").value;
+    const category = document.getElementById("assetCategory").value;
+    const description = document.getElementById("assetDescription").value;
+    const tags = document.getElementById("tagInput").value.split(",").map(t => t.trim()).filter(Boolean);
+
+    if (!file || !title || !category) return showToast("Please complete the form.");
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("title", title);
+    formData.append("description", description);
+    formData.append("category", category);
+    tags.forEach(tag => formData.append("tags", tag));
+
+    try {
+        const res = await fetch(`${BASE_URL}/api/assets/upload`, {
             method: "POST",
+            body: formData,
             credentials: "include"
         });
-        window.open(fileUrl, "_blank");
-    } catch (err) {
-        console.error("Download error:", err);
-    }
-}
 
-async function deleteAsset(id) {
-    try {
-        const res = await fetch(`${BASE_URL}/api/assets/${id}`, {
-            method: "DELETE",
-            credentials: "include"
-        });
         if (res.ok) {
-            alert("Asset deleted.");
-            window.location.reload();
-        } else {
-            alert("Failed to delete asset.");
+            showToast("✅ Upload successful! Awaiting admin approval.");
+            e.target.reset();
+            toggleUploadPanel();
+            await loadAssets();
         }
+
     } catch (err) {
-        console.error("Error deleting asset:", err);
+        showToast("Upload error: " + err.message);
     }
-}
+});
 
 function toggleUploadPanel() {
+    if (!window.currentUser) {
+        showToast("Please login to upload assets.");
+        return;
+    }
     const panel = document.getElementById("uploadPanel");
     panel.style.display = panel.style.display === "none" ? "block" : "none";
 }
+
+window.likeAsset = likeAsset;
+
+function openDiscussion(assetId) {
+    currentAssetId = assetId;
+    document.getElementById("commentOverlay").style.display = "block";
+    loadComments(assetId);
+
+    const asset = allAssets.find(a => a.id === assetId);
+    const isAudio = asset.category === "soundtracks";
+
+    const previewContainer = document.getElementById("modalPreview");
+    previewContainer.innerHTML = isAudio
+        ? `<audio controls src="${asset.fileUrl}" style="width: 100%; max-height: 250px;"></audio>`
+        : `<img src="${asset.imageUrl}" alt="${asset.title}" style="max-width: 100%; max-height: 250px;" />`;
+}
+
+function closeDiscussion() {
+    document.getElementById("commentOverlay").style.display = "none";
+    document.getElementById("discussionComments").innerHTML = "";
+    document.getElementById("newComment").value = "";
+}
+
+async function loadComments(assetId) {
+    try {
+        const res = await fetch(`${BASE_URL}/api/assets/${assetId}/comments`);
+        const comments = await res.json();
+        const container = document.getElementById("discussionComments");
+        container.innerHTML = "";
+
+        if (comments.length === 0) {
+            container.innerHTML = "<p style='color:#ccc;'>No comments yet.</p>";
+        } else {
+            comments.forEach(c => {
+                const isOwner = window.currentUser?.username === c.username;
+                const isAdmin = window.currentUser?.isAdmin;
+                const div = document.createElement("div");
+                div.className = "comment-item";
+                div.innerHTML = `
+                    <strong>${c.username}</strong>
+                    <small>${new Date(c.createdAt).toLocaleString()}</small>
+                    ${(isOwner || isAdmin) ? `<button class="delete-comment-btn" onclick="deleteComment(${c.id})">🗑</button>` : ""}
+                    <br>${c.content}<hr>`;
+                container.appendChild(div);
+            });
+        }
+    } catch (err) {
+        console.error("Failed to load comments:", err);
+    }
+}
+
+async function submitComment() {
+    const textarea = document.getElementById("newComment");
+    const content = textarea.value.trim();
+    if (!content) return showToast("Comment cannot be empty");
+
+    try {
+        const res = await fetch(`${BASE_URL}/api/assets/${currentAssetId}/comments`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify(content)
+        });
+        if (res.ok) {
+            textarea.value = "";
+            await loadComments(currentAssetId);
+        } else {
+            showToast("Failed to post comment.");
+        }
+    } catch (err) {
+        console.error("Post comment failed:", err);
+    }
+}
+
+async function deleteComment(commentId) {
+    showConfirm("Delete this comment?", async () => {
+        try {
+            const res = await fetch(`${BASE_URL}/api/assets/comments/${commentId}`, {
+                method: "DELETE",
+                credentials: "include"
+            });
+            if (res.ok) {
+                showToast("Comment deleted");
+                await loadComments(currentAssetId);
+            } else {
+                showToast("Failed to delete comment.");
+            }
+        } catch (err) {
+            console.error("Delete comment failed:", err);
+        }
+    });
+}
+
+window.deleteComment = deleteComment;
+
+// === CATEGORY FILTER LOGIC ===
+document.querySelectorAll(".category-btn").forEach(btn => {
+    btn.addEventListener("click", e => {
+        e.preventDefault();
+        const selected = btn.getAttribute("data-category");
+
+        // Highlight active button
+        document.querySelectorAll(".category-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+
+        // Show selected asset section
+        document.querySelectorAll(".asset-section").forEach(section => {
+            section.classList.remove("active");
+        });
+
+        const targetSection = document.getElementById(`${selected}-section`);
+        if (targetSection) targetSection.classList.add("active");
+    });
+});
+
+// Show Characters section by default on load
+window.addEventListener("load", () => {
+    document.querySelector('[data-category="characters"]')?.click();
+});

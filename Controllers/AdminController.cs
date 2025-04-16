@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace GameAssetStorage.Controllers
 {
     [Authorize(Policy = "AdminOnly")]
-    public class AdminPanelController : Controller
+    public class AdminController : Controller
     {
         [HttpGet("/admin")]
         public IActionResult Panel()

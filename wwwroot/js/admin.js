@@ -1,17 +1,16 @@
 ﻿const API_BASE_URL = window.location.hostname.includes("localhost")
-    ? "http://localhost:7044/api"
-    : "https://gameasset-backend-aj1g.onrender.com/api";
+    ? "http://localhost:7044"
+    : "https://gameasset-backend-aj1g.onrender.com";
 
-// Auth check
-(async function init() {
+document.addEventListener("DOMContentLoaded", async () => {
     try {
-        const res = await fetch(`${API_BASE_URL}/auth/check-auth`, {
+        const res = await fetch(`${API_BASE_URL}/api/auth/check-auth`, {
             credentials: "include",
         });
         const auth = await res.json();
 
         if (!res.ok || !auth.isAdmin) {
-            window.location.href = "dashboard.html";
+            window.location.href = "/dashboard";
             return;
         }
 
@@ -19,36 +18,34 @@
         loadPendingAssets();
     } catch (err) {
         console.error("Auth error:", err);
-        window.location.href = "login.html";
+        window.location.href = "/login";
     }
-})();
+});
 
-// Logout
 function logout() {
     fetch(`${API_BASE_URL}/auth/logout`, {
         method: "POST",
         credentials: "include"
     }).then(() => {
-        localStorage.clear();
-        window.location.href = "login.html";
+        window.location.href = "/login";
     });
 }
 
-// ✅ Load pending assets from server
 async function loadPendingAssets() {
     try {
-        const res = await fetch(`${API_BASE_URL}/assets/pending-assets`, {
+        const res = await fetch(`${API_BASE_URL}/api/assets/pending-assets`, {
             credentials: "include"
         });
 
         const pendingAssets = await res.json();
+        console.log("Pending Assets:", pendingAssets);
+
         renderPendingAssets(pendingAssets);
     } catch (err) {
         console.error("Failed to load pending assets:", err);
     }
 }
 
-// ✅ Render assets with image preview
 function renderPendingAssets(assets) {
     const tbody = document.getElementById("pendingAssets");
     tbody.innerHTML = "";
@@ -60,24 +57,43 @@ function renderPendingAssets(assets) {
 
     assets.forEach(asset => {
         const tr = document.createElement("tr");
+
+        const isAudio = asset.category === "soundtracks";
+        const assetPreview = isAudio
+            ? `<audio controls style="max-width: 160px;">
+                   <source src="${asset.fileUrl}" type="audio/mpeg">
+                   Your browser does not support the audio element.
+               </audio>`
+            : `<img src="${asset.imageUrl}" alt="${asset.title}" 
+                     style="height: 60px; border-radius: 8px; cursor: pointer;" 
+                     onclick="showAssetModal('${asset.imageUrl}', '${escapeHtml(asset.title)}', \`${escapeHtml(asset.description || "No description")}\`)">`;
+
         tr.innerHTML = `
-            <td>
-                <img src="${asset.imageUrl}" alt="${asset.title}" style="height: 60px; border-radius: 8px; cursor: pointer;" onclick="showAssetModal('${asset.imageUrl}', '${asset.title}', \`${asset.description}\`)">
-            </td>
-            <td>${asset.category}</td>
-            <td>${asset.username || "Unknown"}</td>
+            <td>${assetPreview}</td>
+            <td>${escapeHtml(asset.category)}</td>
+            <td>${escapeHtml(asset.username || "Unknown")}</td>
             <td>${new Date(asset.createdAt).toLocaleDateString()}</td>
             <td>
                 <button class="action-btn approve-btn" onclick="approveAsset(${asset.id})">Approve</button>
                 <button class="action-btn reject-btn" onclick="rejectAsset(${asset.id})">Reject</button>
             </td>
         `;
+
         tbody.appendChild(tr);
     });
 }
 
+function escapeHtml(text) {
+    const map = {
+        '&': "&amp;",
+        '<': "&lt;",
+        '>': "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+    };
+    return text?.replace(/[&<>"']/g, m => map[m]) || "";
+}
 
-// Modal logic
 function showAssetModal(imageUrl, title, description) {
     document.getElementById("modalAssetTitle").textContent = title;
     document.getElementById("modalAssetImage").src = imageUrl;
@@ -89,47 +105,36 @@ function closeAssetModal() {
     document.getElementById("assetModal").style.display = "none";
 }
 
-// Approve asset
 async function approveAsset(id) {
-    if (!confirm("Approve this asset?")) return;
+    showConfirm("Approve this asset?", async () => {
+        const res = await fetch(`${API_BASE_URL}/api/assets/${id}/approve`, {
+            method: "POST",
+            credentials: "include"
+        });
 
-    const res = await fetch(`${API_BASE_URL}/assets/${id}/approve`, {
-        method: "POST",
-        credentials: "include"
+        if (res.ok) {
+            showToast("✅ Asset approved.");
+            loadPendingAssets();
+        } else {
+            showToast("❌ Failed to approve asset.");
+        }
     });
-
-    if (res.ok) {
-        alert("Asset approved!");
-        loadPendingAssets();
-    } else {
-        alert("Failed to approve asset.");
-    }
 }
 
-// Reject asset
 async function rejectAsset(id) {
-    if (!confirm("Reject this asset? This cannot be undone.")) return;
+    showConfirm("Reject this asset? This will permanently delete the file from storage.", async () => {
+        const res = await fetch(`${API_BASE_URL}/api/assets/${id}/reject`, {
+            method: "DELETE",
+            credentials: "include"
+        });
 
-    const res = await fetch(`${API_BASE_URL}/assets/${id}/reject`, {
-        method: "DELETE",
-        credentials: "include"
+        if (res.ok) {
+            showToast("❌ Asset rejected and removed.");
+            loadPendingAssets();
+        } else {
+            const error = await res.text();
+            showToast("Failed to reject: " + error);
+        }
     });
-
-    if (res.ok) {
-        alert("Asset rejected.");
-        loadPendingAssets();
-    } else {
-        alert("Failed to reject asset.");
-    }
 }
 
-function showAssetModal(imageUrl, title, description) {
-    document.getElementById("modalAssetImage").src = imageUrl;
-    document.getElementById("modalAssetTitle").textContent = title;
-    document.getElementById("modalAssetDescription").textContent = description;
-    document.getElementById("assetModal").style.display = "block";
-}
-
-function closeAssetModal() {
-    document.getElementById("assetModal").style.display = "none";
-}

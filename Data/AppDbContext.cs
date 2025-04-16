@@ -11,6 +11,8 @@ namespace GameAssetStorage.Data
         public DbSet<User> Users { get; set; }
         public DbSet<Asset> Assets { get; set; }
         public DbSet<AssetLike> AssetLikes { get; set; }
+        public DbSet<AssetComment> AssetComments { get; set; }
+
         public DbSet<DataProtectionKey> DataProtectionKeys { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -23,7 +25,7 @@ namespace GameAssetStorage.Data
                 .IsUnique();
 
             // Avoid creating the Users table
-            modelBuilder.Entity<User>().ToTable("users", t => t.ExcludeFromMigrations()); // Explicitly define the table name
+            modelBuilder.Entity<User>().ToTable("users"); // ✅ allow migrations to include this table
             modelBuilder.Entity<User>().Property(u => u.Id).HasColumnName("id");
             modelBuilder.Entity<User>().Property(u => u.username).HasColumnName("username");
             modelBuilder.Entity<User>().Property(u => u.password).HasColumnName("password");
@@ -40,6 +42,15 @@ namespace GameAssetStorage.Data
             modelBuilder.Entity<Asset>().Property(a => a.Likes).HasColumnName("likes");
             modelBuilder.Entity<Asset>().Property(a => a.UserId).HasColumnName("user_id");
             modelBuilder.Entity<Asset>().Property(a => a.CreatedAt).HasColumnName("created_at");
+
+            // Assets Comment creation
+            modelBuilder.Entity<AssetComment>().ToTable("AssetComments");
+            modelBuilder.Entity<AssetComment>().Property(c => c.Id).HasColumnName("id");
+            modelBuilder.Entity<AssetComment>().Property(c => c.AssetId).HasColumnName("asset_id");
+            modelBuilder.Entity<AssetComment>().Property(c => c.UserId).HasColumnName("user_id");
+            modelBuilder.Entity<AssetComment>().Property(c => c.Content).HasColumnName("content");
+            modelBuilder.Entity<AssetComment>().Property(c => c.CreatedAt).HasColumnName("created_at");
+
 
             // Data protection keys table
             modelBuilder.Entity<DataProtectionKey>(b =>

@@ -1,104 +1,140 @@
-﻿const BASE_URL = window.location.hostname.includes("localhost")
-    ? "http://localhost:7044"
-    : "https://gameasset-backend-aj1g.onrender.com";
-
-// On load
-window.onload = fetchAssets;
-
-async function fetchAssets() {
-    try {
-        const res = await fetch(`${BASE_URL}/api/asset/approved`, { credentials: 'include' });
-        const data = await res.json();
-
-        const userRes = await fetch(`${BASE_URL}/api/auth/check-auth`, { credentials: 'include' });
-        const user = await userRes.json();
-
-        document.getElementById("usernameDisplay").innerText = `@${user.username}`;
-        document.getElementById("newUsername").value = user.username;
-
-        const liked = data.filter(asset => asset.likedBy?.includes(user.username));
-        const uploaded = data.filter(asset => asset.userId == user.userId);
-
-        const likedContainer = document.getElementById("likedAssets");
-        const uploadedContainer = document.getElementById("uploadedAssets");
-
-        if (liked.length === 0) document.getElementById("noLiked").style.display = "block";
-        else liked.forEach(a => likedContainer.appendChild(renderCard(a)));
-
-        if (uploaded.length === 0) document.getElementById("noUploads").style.display = "block";
-        else uploaded.forEach(a => uploadedContainer.appendChild(renderCard(a)));
-
-        // If admin, add Actions button
-        if (user.isAdmin) {
-            const btn = document.createElement("button");
-            btn.innerHTML = `<span>🛠️</span><span>Actions</span>`;
-            btn.onclick = () => location.href = "admin.html";
-            document.getElementById("bottomNavActions").appendChild(btn);
-        }
-    } catch (err) {
-        console.error("Failed to fetch profile data:", err);
-    }
+﻿if (!window.BASE_URL) {
+    window.BASE_URL = window.location.hostname.includes("localhost")
+        ? "http://localhost:7044"
+        : "https://gameasset-backend-aj1g.onrender.com";
 }
 
-function renderCard(asset) {
-    const div = document.createElement("div");
-    div.className = "asset-card";
-    div.innerHTML = `
-        <img src="${asset.imageUrl}" alt="${asset.title}" />
-        <h4>${asset.title}</h4>
-        <p>${asset.description}</p>
-        <a class="download-btn" href="${asset.imageUrl}" download>Download</a>
-    `;
-    return div;
-}
-
-function logout() {
-    fetch(`${BASE_URL}/api/auth/logout`, {
-        method: "POST",
-        credentials: "include"
-    }).then(() => {
-        window.location.href = "login.html";
-    });
-}
-
-function toggleUploadPanel() {
-    const panel = document.getElementById("uploadPanel");
-    if (panel) panel.style.display = panel.style.display === "none" ? "block" : "none";
-}
-
-function openEditModal() {
-    document.getElementById("editModal").style.display = "block";
-}
-
-function closeEditModal() {
-    document.getElementById("editModal").style.display = "none";
-}
-
-document.getElementById("editForm")?.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const username = document.getElementById("newUsername").value.trim();
-    const password = document.getElementById("newPassword").value.trim();
-    const message = document.getElementById("editMessage");
+window.addEventListener("DOMContentLoaded", async () => {
+    const usernameDisplay = document.getElementById("usernameDisplay");
 
     try {
-        const res = await fetch(`${BASE_URL}/api/auth/edit-profile`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({ username, password })
+        const res = await fetch(`${BASE_URL}/api/auth/check-auth`, {
+            credentials: "include"
         });
 
-        const data = await res.json();
         if (res.ok) {
-            message.className = "auth-message success";
-            message.textContent = "Profile updated!";
-            setTimeout(() => location.reload(), 1200);
+            const user = await res.json();
+            usernameDisplay.textContent = `Welcome, ${user.username}!`;
+            loadLikedAssets();
+            loadUploadedAssets();
         } else {
-            message.className = "auth-message error";
-            message.textContent = data.message || "Failed to update.";
+            window.location.href = "/login";
         }
     } catch (err) {
-        message.className = "auth-message error";
-        message.textContent = "Something went wrong.";
+        console.error("Auth check failed:", err);
+        window.location.href = "/login";
     }
+
+    document.getElementById("editForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const newUsername = document.getElementById("newUsername").value.trim();
+        const newPassword = document.getElementById("newPassword").value.trim();
+        const message = document.getElementById("editMessage");
+
+        try {
+            const res = await fetch(`${BASE_URL}/api/auth/edit-profile`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({ username: newUsername, password: newPassword })
+            });
+
+            const data = await res.json();
+            if (res.ok) {
+                message.classList.add("success");
+                message.textContent = "Profile updated!";
+                document.getElementById("usernameDisplay").textContent = `Welcome, ${newUsername}!`;
+            } else {
+                throw new Error(data.message || "Failed to update.");
+            }
+        } catch (err) {
+            message.classList.add("error");
+            message.textContent = err.message;
+        }
+    });
 });
+
+function toggleEditProfile() {
+    const form = document.getElementById("editProfileForm");
+    form.style.display = form.style.display === "none" ? "block" : "none";
+}
+
+async function loadLikedAssets() {
+    try {
+        const res = await fetch(`${BASE_URL}/api/assets/liked`, {
+            credentials: "include"
+        });
+
+        const liked = await res.json();
+        const container = document.getElementById("likedAssets");
+        const counter = document.getElementById("likedCount");
+
+        container.innerHTML = "";
+        if (!liked || liked.length === 0) {
+            document.getElementById("noLiked").style.display = "block";
+            counter.textContent = "(0)";
+        } else {
+            document.getElementById("noLiked").style.display = "none";
+            counter.textContent = `(${liked.length})`;
+            liked.forEach(a => container.appendChild(createAssetCard(a)));
+        }
+    } catch (err) {
+        console.error("Failed to load liked assets", err);
+    }
+}
+
+async function loadUploadedAssets() {
+    try {
+        const res = await fetch(`${BASE_URL}/api/assets/user`, {
+            credentials: "include"
+        });
+
+        const assets = await res.json();
+        const container = document.getElementById("uploadedAssets");
+        const counter = document.getElementById("uploadCount");
+
+        container.innerHTML = "";
+        if (!assets || assets.length === 0) {
+            document.getElementById("noUploads").style.display = "block";
+            counter.textContent = "(0)";
+        } else {
+            document.getElementById("noUploads").style.display = "none";
+            counter.textContent = `(${assets.length})`;
+            assets.forEach(a => container.appendChild(createAssetCard(a)));
+        }
+    } catch (err) {
+        console.error("Failed to load uploaded assets", err);
+    }
+}
+
+function createAssetCard(asset) {
+    const card = document.createElement("div");
+    card.className = "asset-card";
+
+    const img = document.createElement("img");
+    img.src = asset.imageUrl;
+    img.alt = asset.title;
+    img.onerror = () => {
+        img.src = "/assets/placeholder.jpg"; // fallback image
+    };
+
+    card.appendChild(img);
+    card.innerHTML += `
+        <h4>${asset.title}</h4>
+        <p>${asset.description}</p>
+        <small>Tags: ${asset.tags?.join(", ") || "None"}</small>
+    `;
+    return card;
+}
+
+async function logout() {
+    try {
+        await fetch(`${BASE_URL}/api/auth/logout`, {
+            method: "POST",
+            credentials: "include"
+        });
+        window.location.href = "/login";
+    } catch (err) {
+        showToast("Logout failed");
+    }
+}

@@ -10,12 +10,12 @@ using System.Security.Claims;
 [Route("api/assets")]
 public class AssetController : ControllerBase
 {
-    private readonly CloudinaryService _cloudinaryService;
+    private readonly S3Service _s3Service;
     private readonly AppDbContext _context;
 
-    public AssetController(CloudinaryService cloudinaryService, AppDbContext context)
+    public AssetController(S3Service s3Service, AppDbContext context)
     {
-        _cloudinaryService = cloudinaryService;
+        _s3Service = s3Service;
         _context = context;
     }
 
@@ -34,25 +34,21 @@ public class AssetController : ControllerBase
         if (string.IsNullOrWhiteSpace(title) || string.IsNullOrWhiteSpace(category))
             return BadRequest("Title and category are required.");
 
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-        if (userIdClaim == null || string.IsNullOrEmpty(userIdClaim.Value))
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userId))
             return Unauthorized("Invalid user.");
-
-        var userId = userIdClaim.Value;
 
         try
         {
-            var imageUrl = await _cloudinaryService.UploadImageAsync(file);
-            if (string.IsNullOrEmpty(imageUrl))
-                return StatusCode(500, "Cloudinary upload failed.");
+            var uploadedUrl = await _s3Service.UploadFileAsync(file);
 
             var asset = new Asset
             {
                 Title = title,
                 Description = description ?? "",
                 Category = category.ToLower(),
-                ImageUrl = imageUrl,
-                FileUrl = imageUrl,
+                ImageUrl = uploadedUrl,
+                FileUrl = uploadedUrl,
                 Tags = tags?.ToArray() ?? Array.Empty<string>(),
                 UserId = userId,
                 IsApproved = false,
@@ -73,43 +69,82 @@ public class AssetController : ControllerBase
 
     [Authorize]
     [HttpPost("{id}/like")]
-    public async Task<IActionResult> LikeAsset(int id)
+    public async Task<IActionResult> ToggleLike(int id)
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+        var asset = await _context.Assets.FindAsync(id);
+        if (asset == null) return NotFound();
+
+        var existingLike = await _context.AssetLikes.FirstOrDefaultAsync(l => l.AssetId == id && l.UserId == userId);
+        if (existingLike != null)
+        {
+            _context.AssetLikes.Remove(existingLike);
+            asset.Likes = Math.Max(0, asset.Likes - 1);
+        }
+        else
+        {
+            _context.AssetLikes.Add(new AssetLike { AssetId = id, UserId = userId });
+            asset.Likes++;
+        }
+
+        await _context.SaveChangesAsync();
+        return Ok(new { likes = asset.Likes });
+    }
+
+    [Authorize]
+    [HttpGet("liked")]
+    public async Task<IActionResult> GetLikedAssets()
     {
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId))
-            return Unauthorized("User not authenticated.");
+            return Unauthorized();
 
-        var asset = await _context.Assets.FindAsync(id);
-        if (asset == null) return NotFound("Asset not found.");
+        var likedAssetIds = await _context.AssetLikes
+            .Where(like => like.UserId == userId)
+            .Select(like => like.AssetId)
+            .ToListAsync();
 
-        // Check if user already liked
-        bool alreadyLiked = await _context.AssetLikes.AnyAsync(al => al.AssetId == id && al.UserId == userId);
-        if (alreadyLiked)
-            return BadRequest(new { message = "You have already liked this asset." });
+        var assets = await _context.Assets
+            .Where(asset => likedAssetIds.Contains(asset.Id) && asset.IsApproved)
+            .OrderByDescending(asset => asset.CreatedAt)
+            .ToListAsync();
 
-        asset.Likes++;
-
-        _context.AssetLikes.Add(new AssetLike
-        {
-            AssetId = id,
-            UserId = userId
-        });
-
-        await _context.SaveChangesAsync();
-        return Ok(new { message = "Liked!", likes = asset.Likes });
+        return Ok(assets);
     }
-
 
     [Authorize]
     [HttpPost("{id}/download")]
     public async Task<IActionResult> DownloadAsset(int id)
     {
         var asset = await _context.Assets.FindAsync(id);
-        if (asset == null) return NotFound("Asset not found.");
+        if (asset == null) return NotFound();
 
         asset.Downloads++;
         await _context.SaveChangesAsync();
+
         return Ok(new { message = "Download recorded", downloads = asset.Downloads });
+    }
+
+    [HttpGet("{id}/download-file")]
+    public async Task<IActionResult> DownloadFile(int id)
+    {
+        var asset = await _context.Assets.FindAsync(id);
+        if (asset == null) return NotFound("Asset not found.");
+
+        try
+        {
+            var fileStream = await _s3Service.GetFileStreamAsync(asset.FileUrl);
+            var fileName = Path.GetFileName(new Uri(asset.FileUrl).AbsolutePath);
+
+            return File(fileStream, "application/octet-stream", fileName);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("❌ File download error: " + ex.Message);
+            return StatusCode(500, "Failed to fetch file from S3.");
+        }
     }
 
     [Authorize(Policy = "AdminOnly")]
@@ -117,11 +152,12 @@ public class AssetController : ControllerBase
     public async Task<IActionResult> ApproveAsset(int id)
     {
         var asset = await _context.Assets.FindAsync(id);
-        if (asset == null) return NotFound("Asset not found.");
+        if (asset == null) return NotFound();
 
         asset.IsApproved = true;
         await _context.SaveChangesAsync();
-        return Ok(new { message = "Asset approved successfully." });
+
+        return Ok(new { message = "Asset approved." });
     }
 
     [Authorize(Policy = "AdminOnly")]
@@ -129,14 +165,11 @@ public class AssetController : ControllerBase
     public async Task<IActionResult> RejectAsset(int id)
     {
         var asset = await _context.Assets.FindAsync(id);
-        if (asset == null) return NotFound("Asset not found.");
+        if (asset == null) return NotFound();
 
         try
         {
-            var success = await _cloudinaryService.DeleteImageAsync(asset.ImageUrl);
-            if (!success)
-                Console.WriteLine("⚠️ Failed to delete from Cloudinary.");
-
+            await _s3Service.DeleteFileAsync(asset.FileUrl);
             _context.Assets.Remove(asset);
             await _context.SaveChangesAsync();
 
@@ -145,7 +178,7 @@ public class AssetController : ControllerBase
         catch (Exception ex)
         {
             Console.WriteLine("❌ Reject error: " + ex.Message);
-            return StatusCode(500, new { message = "Failed to reject asset", error = ex.Message });
+            return StatusCode(500, new { message = "Delete failed", error = ex.Message });
         }
     }
 
@@ -154,63 +187,53 @@ public class AssetController : ControllerBase
     public async Task<IActionResult> DeleteAsset(int id)
     {
         var asset = await _context.Assets.FindAsync(id);
-        if (asset == null) return NotFound("Asset not found.");
+        if (asset == null) return NotFound();
 
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         var isAdmin = User.FindFirst("IsAdmin")?.Value == "true";
 
         if (asset.UserId != userId && !isAdmin)
-        {
             return Forbid();
-        }
 
         try
         {
-            var success = await _cloudinaryService.DeleteImageAsync(asset.ImageUrl);
-            if (!success)
-                Console.WriteLine("⚠️ Failed to delete from Cloudinary.");
-
+            await _s3Service.DeleteFileAsync(asset.FileUrl);
             _context.Assets.Remove(asset);
             await _context.SaveChangesAsync();
 
-            return Ok(new { message = "Asset deleted successfully." });
+            return Ok(new { message = "Asset deleted." });
         }
         catch (Exception ex)
         {
             Console.WriteLine("❌ Delete error: " + ex.Message);
-            return StatusCode(500, new { message = "Failed to delete asset", error = ex.Message });
+            return StatusCode(500, new { message = "Delete failed", error = ex.Message });
         }
     }
-
 
     [Authorize(Policy = "AdminOnly")]
     [HttpGet("pending-assets")]
     public async Task<IActionResult> GetPendingAssets()
     {
-        var pendingAssets = await _context.Assets
-            .Where(a => !a.IsApproved)
-            .OrderByDescending(a => a.CreatedAt)
-            .Join(
-                _context.Users,
-                asset => asset.UserId,
-                user => user.Id.ToString(),
-                (asset, user) => new
-                {
-                    asset.Id,
-                    asset.Title,
-                    asset.Description,
-                    asset.Category,
-                    asset.ImageUrl,
-                    asset.FileUrl,
-                    asset.CreatedAt,
-                    asset.Tags,
-                    asset.Likes,
-                    asset.Downloads,
-                    username = user.username
-                })
-            .ToListAsync();
+        var assets = await (from asset in _context.Assets
+                            join user in _context.Users on asset.UserId equals user.Id.ToString()
+                            where !asset.IsApproved
+                            orderby asset.CreatedAt descending
+                            select new
+                            {
+                                asset.Id,
+                                asset.Title,
+                                asset.Description,
+                                asset.Category,
+                                asset.ImageUrl,
+                                asset.FileUrl,
+                                asset.CreatedAt,
+                                asset.Tags,
+                                asset.Likes,
+                                asset.Downloads,
+                                username = user.username
+                            }).ToListAsync();
 
-        return Ok(pendingAssets);
+        return Ok(assets);
     }
 
     [HttpGet("approved")]
@@ -250,5 +273,74 @@ public class AssetController : ControllerBase
             .ToListAsync();
 
         return Ok(assets);
+    }
+
+    [Authorize]
+    [HttpPost("{id}/comments")]
+    public async Task<IActionResult> AddComment(int id, [FromBody] string content)
+    {
+        if (string.IsNullOrWhiteSpace(content)) return BadRequest("Comment cannot be empty.");
+
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+        var asset = await _context.Assets.FindAsync(id);
+        if (asset == null || !asset.IsApproved) return NotFound("Asset not found or not approved.");
+
+        var comment = new AssetComment
+        {
+            AssetId = id,
+            UserId = int.Parse(userId),
+            Content = content,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _context.AssetComments.Add(comment);
+        await _context.SaveChangesAsync();
+
+        return Ok(new { message = "Comment added." });
+    }
+
+    [HttpGet("{id}/comments")]
+    public async Task<IActionResult> GetComments(int id)
+    {
+        var asset = await _context.Assets.FindAsync(id);
+        if (asset == null || !asset.IsApproved) return NotFound("Asset not found or not approved.");
+
+        var comments = await _context.AssetComments
+            .Where(c => c.AssetId == id)
+            .OrderByDescending(c => c.CreatedAt)
+            .Join(_context.Users,
+                  comment => comment.UserId,
+                  user => user.Id,
+                  (comment, user) => new
+                  {
+                      comment.Id,
+                      user.username,
+                      comment.Content,
+                      comment.CreatedAt
+                  })
+            .ToListAsync();
+
+        return Ok(comments);
+    }
+
+    [Authorize]
+    [HttpDelete("comments/{commentId}")]
+    public async Task<IActionResult> DeleteComment(int commentId)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var isAdmin = User.FindFirst("IsAdmin")?.Value == "true";
+
+        var comment = await _context.AssetComments.FindAsync(commentId);
+        if (comment == null)
+            return NotFound();
+
+        if (comment.UserId.ToString() != userId && !isAdmin)
+            return Forbid();
+
+        _context.AssetComments.Remove(comment);
+        await _context.SaveChangesAsync();
+        return Ok(new { message = "Comment deleted." });
     }
 }

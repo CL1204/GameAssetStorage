@@ -6,53 +6,74 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.OpenApi.Models;
-using System.IO;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// PostgreSQL DB
+// PostgreSQL
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Cloudinary Service
+// Services
 builder.Services.AddSingleton<CloudinaryService>();
+builder.Services.AddSingleton<S3Service>(); // ✅ Add this here
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IUserService, UserService>();
 
-// Data Protection Keys
+// Data protection
 builder.Services.AddDataProtection()
     .PersistKeysToFileSystem(new DirectoryInfo("/app/keys"))
     .SetApplicationName("GameAssetStorage");
 
-// Repositories + Services
-builder.Services.AddScoped<IUserRepository, UserRepository>();
-builder.Services.AddScoped<IUserService, UserService>();
+// Cookie policy
+builder.Services.Configure<CookiePolicyOptions>(options =>
+{
+    options.MinimumSameSitePolicy = SameSiteMode.None;
+    options.Secure = CookieSecurePolicy.SameAsRequest;
+    options.HttpOnly = Microsoft.AspNetCore.CookiePolicy.HttpOnlyPolicy.Always;
+});
 
-// Cookie Authentication
+// ✅ Cookie auth setup
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
         options.Cookie.HttpOnly = true;
         options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
         options.Cookie.SameSite = SameSiteMode.None;
+        options.Cookie.Name = "GameAssetAuth";
+        options.Cookie.Path = "/";
         options.SlidingExpiration = true;
         options.ExpireTimeSpan = TimeSpan.FromDays(7);
-        options.LoginPath = "/api/auth/login";
+        options.LoginPath = "/login";
         options.AccessDeniedPath = "/api/auth/access-denied";
+
+        options.Events.OnRedirectToLogin = context =>
+        {
+            if (context.Request.Path.StartsWithSegments("/api"))
+            {
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                return Task.CompletedTask;
+            }
+            context.Response.Redirect(context.RedirectUri);
+            return Task.CompletedTask;
+        };
     });
 
-// Role-based Policies
+
+
+// Authorization
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("AdminOnly", policy =>
         policy.RequireClaim("IsAdmin", "true"));
 });
 
-// ✅ Enhanced CORS
+// ✅ CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("NetlifyCors", policy =>
     {
         policy
-            .SetIsOriginAllowed(_ => true) // ✅ Allow dynamic Netlify subdomains & local dev
+            .SetIsOriginAllowed(_ => true)
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials()
@@ -60,8 +81,8 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Swagger
-builder.Services.AddControllersWithViews(); // Use AddControllersWithViews() for MVC
+// MVC + Swagger
+builder.Services.AddControllersWithViews();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -78,7 +99,13 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// 🔍 Log requests for debugging CORS
+// HTTPS redirection (important in dev for cookie secure flag)
+if (app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
+
+// Logging
 app.Use(async (context, next) =>
 {
     Console.WriteLine($"[Request] {context.Request.Method} {context.Request.Path}");
@@ -87,7 +114,7 @@ app.Use(async (context, next) =>
     await next();
 });
 
-// Error Handling
+// Error handling
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error");
@@ -100,50 +127,21 @@ if (!app.Environment.IsDevelopment())
     });
 }
 
-// ✅ DB Migration Catch Stack Trace
+// DB Migration
 using (var scope = app.Services.CreateScope())
 {
-    var services = scope.ServiceProvider;
-    try
-    {
-        var db = services.GetRequiredService<AppDbContext>();
-        db.Database.Migrate();
-        Console.WriteLine("✅ Database migrated successfully.");
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"❌ Migration failed: {ex.Message}");
-        Console.WriteLine(ex.StackTrace);
-    }
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    db.Database.Migrate();
+    Console.WriteLine("✅ Database migrated successfully.");
 }
 
-// Render port setup
+// Port setup for Render
 if (builder.Environment.IsProduction())
 {
     app.Urls.Add($"http://*:{Environment.GetEnvironmentVariable("PORT") ?? "7044"}");
 }
-app.UseForwardedHeaders();
 
-// Health Check
-app.MapGet("/health", () => Results.Ok(new
-{
-    Status = "Healthy",
-    Timestamp = DateTime.UtcNow,
-    Environment = app.Environment.EnvironmentName
-}));
-
-// Swagger
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Game Asset Storage API V1");
-        c.RoutePrefix = "swagger";
-    });
-}
-
-// Static file handling
+// Static
 var wwwrootPath = Path.Combine(builder.Environment.ContentRootPath, "wwwroot");
 if (!Directory.Exists(wwwrootPath)) Directory.CreateDirectory(wwwrootPath);
 
@@ -157,25 +155,39 @@ app.UseStaticFiles(new StaticFileOptions
     }
 });
 
-// ✅ Middleware Order
+// ✅ Core Middleware Chain
 app.UseRouting();
-app.UseStaticFiles(new StaticFileOptions
-{
-    FileProvider = new PhysicalFileProvider(Path.Combine(builder.Environment.ContentRootPath, "wwwroot")),
-    RequestPath = ""
-});
-// Ensure static files middleware is before authentication
-app.UseCors("NetlifyCors"); // ✅ MUST be before auth
+app.UseCors("NetlifyCors");
+app.UseCookiePolicy();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Default route setup for MVC
+// Swagger
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Game Asset Storage API V1");
+        c.RoutePrefix = "swagger";
+    });
+}
+
+// Health check
+app.MapGet("/health", () => Results.Ok(new
+{
+    Status = "Healthy",
+    Timestamp = DateTime.UtcNow,
+    Environment = app.Environment.EnvironmentName
+}));
+
+// Routing
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Dashboard}/{action=Index}/{id?}");
 
-app.MapControllers(); // This stays too, for API endpoints
+app.MapFallbackToController("Login", "AuthView");
 
 app.Run();
 
-Console.WriteLine($"✅ App is fully running in {app.Environment.EnvironmentName} on port {Environment.GetEnvironmentVariable("PORT") ?? "7044"}");
+Console.WriteLine($"✅ App running in {app.Environment.EnvironmentName} on port {Environment.GetEnvironmentVariable("PORT") ?? "7044"}");

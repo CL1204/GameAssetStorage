@@ -19,14 +19,35 @@ namespace GameAssetStorage.Services
             _cloudinary = new Cloudinary(account);
         }
 
-        public async Task<string> UploadImageAsync(IFormFile file)
+        public async Task<string> UploadFileAsync(IFormFile file)
         {
             if (file == null || file.Length == 0)
                 return string.Empty;
 
             await using var stream = file.OpenReadStream();
 
-            var uploadParams = new ImageUploadParams
+            var uploadParams = new RawUploadParams
+            {
+                File = new FileDescription(file.FileName, stream),
+                Folder = "gameassets",
+                UseFilename = true,
+                UniqueFilename = true,
+                Overwrite = true // optional
+            };
+
+            var result = await _cloudinary.UploadAsync(uploadParams);
+            return result.SecureUrl?.ToString() ?? string.Empty;
+        }
+
+
+        public async Task<string> UploadAudioAsync(IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+                return string.Empty;
+
+            await using var stream = file.OpenReadStream();
+
+            var uploadParams = new RawUploadParams
             {
                 File = new FileDescription(file.FileName, stream),
                 Folder = "gameassets",
@@ -38,17 +59,17 @@ namespace GameAssetStorage.Services
             return result.SecureUrl?.ToString() ?? string.Empty;
         }
 
+
+
         public async Task<bool> DeleteImageAsync(string imageUrl)
         {
             try
             {
-                // Extract public ID from URL, remove folder and extension
                 var uri = new Uri(imageUrl);
-                var parts = uri.AbsolutePath.Split('/'); // /gameassets/filename.jpg
-                var filenameWithExt = parts.Last();       // filename.jpg
-                var filename = filenameWithExt.Split('.').First(); // filename
-                var folder = parts[^2]; // should be "gameassets"
-
+                var parts = uri.AbsolutePath.Split('/');
+                var filenameWithExt = parts.Last();
+                var filename = filenameWithExt.Split('.').First();
+                var folder = parts[^2];
                 var publicId = $"{folder}/{filename}";
 
                 var deletionParams = new DeletionParams(publicId);

@@ -4,10 +4,11 @@ namespace GameAssetStorage.Controllers
 {
     public class ViewController : Controller
     {
-        [HttpGet("login")]
+        // This login route is now unique, avoid conflict with AuthController
+        [HttpGet("view/login")]
         public IActionResult Login()
         {
-            return View();  // This should map to Login.cshtml
+            return View();  // Ensure that this maps to a different view, if needed
         }
     }
 }

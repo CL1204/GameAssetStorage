@@ -4,33 +4,143 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - Game Asset Storage</title>
-
     <link rel="stylesheet" href="~/css/styles.css" />
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
 </head>
+
 <body class="dark-mode">
 
-    <!-- Top Navbar -->
+    <!-- ✅ Toast -->
+    <div id="toast" class="toast-message"></div>
+
+    <!-- ✅ Confirm Modal -->
+    <div id="confirmOverlay" class="overlay" style="display: none;">
+        <div class="confirm-modal">
+            <h3 id="confirmTitle">Are you sure?</h3>
+            <p id="confirmMessage">This action cannot be undone.</p>
+            <div class="confirm-buttons">
+                <button id="confirmYes">Yes</button>
+                <button id="confirmNo">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ✅ Navbar -->
     <nav class="navbar">
         <div class="logo">
             <span class="site-title">GameAssetStorage</span>
             <span class="admin-badge" id="adminBadge" style="display: none;">Admin</span>
         </div>
-        <span id="userLabel" class="user-label">@User.Identity?.Name</span>
+        <span id="userLabel" class="user-label">Guest</span>
+        <button id="loginBtn" class="login-button" onclick="window.location.href='/login'" style="display: none;">Login</button>
+        <button id="logoutBtn" class="logout-button" style="display: none;">Logout</button>
     </nav>
 
-    <!-- Main Page Content -->
     <main>
         @RenderBody()
     </main>
 
-    <!-- Bottom Navigation -->
     <nav id="bottomNavContainer"></nav>
     <script src="~/js/bottom-nav.js"></script>
-    <script src="~/js/dashboard.js"></script>
 
-    <!-- Page-Specific Scripts -->
+    <!-- ✅ Auth & Logout -->
+    <script>
+        (async () => {
+            const path = window.location.pathname;
+            const isAuthPage = path.includes("/login") || path.includes("/register");
+
+            const userLabel = document.getElementById("userLabel");
+            const loginBtn = document.getElementById("loginBtn");
+            const logoutBtn = document.getElementById("logoutBtn");
+            const adminBadge = document.getElementById("adminBadge");
+
+            userLabel.textContent = "Guest";
+            loginBtn.style.display = "inline-block";
+            logoutBtn.style.display = "none";
+            adminBadge.style.display = "none";
+
+            if (isAuthPage) {
+                try {
+                    await fetch("/api/auth/logout", {
+                        method: "POST",
+                        credentials: "include"
+                    });
+                } catch { }
+                return;
+            }
+
+            try {
+                const res = await fetch("/api/auth/check-auth", { credentials: "include" });
+                if (res.ok) {
+                    const user = await res.json();
+                    userLabel.textContent = user.username;
+                    loginBtn.style.display = "none";
+                    logoutBtn.style.display = "inline-block";
+                    if (user.isAdmin) adminBadge.style.display = "inline";
+                }
+            } catch (err) {
+                console.warn("check-auth failed", err);
+            }
+
+            logoutBtn?.addEventListener("click", async () => {
+                const url = window.location.hostname.includes("localhost")
+                    ? "http://localhost:7044/api/auth/logout"
+                    : "https://gameasset-backend-aj1g.onrender.com/api/auth/logout";
+
+                try {
+                    await fetch(url, {
+                        method: "POST",
+                        credentials: "include"
+                    });
+                    window.location.href = "/login";
+                } catch {
+                    showToast("Logout failed.");
+                }
+            });
+        })();
+    </script>
+
+    <!-- ✅ Global Toast & Confirm Modal -->
+    <script>
+        function showToast(message, duration = 3000) {
+            const toast = document.getElementById("toast");
+            if (!toast) return;
+
+            toast.textContent = message;
+            toast.classList.add("show");
+            toast.style.display = "block";
+
+            setTimeout(() => {
+                toast.classList.remove("show");
+                toast.style.display = "none";
+            }, duration);
+        }
+
+        function showConfirm(message, onConfirm, title = "Are you sure?") {
+            const overlay = document.getElementById("confirmOverlay");
+            const confirmTitle = document.getElementById("confirmTitle");
+            const confirmMessage = document.getElementById("confirmMessage");
+            const yesBtn = document.getElementById("confirmYes");
+            const noBtn = document.getElementById("confirmNo");
+
+            confirmTitle.textContent = title;
+            confirmMessage.textContent = message;
+            overlay.style.display = "block";
+
+            const close = () => {
+                overlay.style.display = "none";
+                yesBtn.onclick = null;
+                noBtn.onclick = null;
+            };
+
+            yesBtn.onclick = () => {
+                close();
+                onConfirm();
+            };
+            noBtn.onclick = close;
+        }
+    </script>
+
     @RenderSection("Scripts", required: false)
-
 </body>
 </html>

@@ -20,7 +20,7 @@ namespace GameAssetStorage.Models
         public string Description { get; set; } = string.Empty;
 
         [Required]
-        [Column("imageurl")]
+        [Column("image_url")]
         public string ImageUrl { get; set; } = string.Empty;
 
         [Required]
@@ -40,14 +40,14 @@ namespace GameAssetStorage.Models
         [Column("downloads")]
         public int Downloads { get; set; } = 0;
 
-        [Column("isapproved")]
+        [Column("is_approved")]
         public bool IsApproved { get; set; } = false;
 
         [Required]
-        [Column("userid")]
+        [Column("user_id")]
         public string UserId { get; set; } = string.Empty;
 
-        [Column("createdat")]
+        [Column("created_at")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 }

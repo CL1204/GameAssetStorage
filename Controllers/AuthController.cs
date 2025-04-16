@@ -10,28 +10,19 @@ using System.Security.Claims;
 
 namespace GameAssetStorage.Controllers
 {
+    [ApiController]
     [Route("api/auth")]
-    public class AuthController : Controller // Change to Controller (not ControllerBase)
+    public class AuthController : ControllerBase
     {
         private readonly AppDbContext _context;
-        private readonly ILogger<AuthController> _logger;
         private readonly IUserService _userService;
+        private readonly ILogger<AuthController> _logger;
 
-        public AuthController(
-            AppDbContext context,
-            ILogger<AuthController> logger,
-            IUserService userService)
+        public AuthController(AppDbContext context, IUserService userService, ILogger<AuthController> logger)
         {
             _context = context;
-            _logger = logger;
             _userService = userService;
-        }
-
-        // Add this method for handling login page rendering
-        [HttpGet("login")]
-        public IActionResult Login()
-        {
-            return View();  // This should map to Login.cshtml
+            _logger = logger;
         }
 
         [HttpPost("register")]
@@ -48,10 +39,7 @@ namespace GameAssetStorage.Controllers
                 if (registrationDto.password.Length < 8)
                     return BadRequest(new { message = "Password must be at least 8 characters" });
 
-                var user = await _userService.Register(
-                    registrationDto.username,
-                    registrationDto.password);
-
+                var user = await _userService.Register(registrationDto.username, registrationDto.password);
                 return Ok(new { username = user.username });
             }
             catch (ArgumentException argEx)
@@ -70,48 +58,46 @@ namespace GameAssetStorage.Controllers
         {
             try
             {
-                var user = await _userService.Authenticate(
-                    loginDto.username,
-                    loginDto.password);
-
+                var user = await _userService.Authenticate(loginDto.username, loginDto.password);
                 if (user == null)
-                    return Unauthorized(new { message = "Invalid username or password" });
+                    return BadRequest(new { message = "Invalid username or password" });
 
                 if (user.is_banned)
-                    return Forbid();
+                    return StatusCode(403, new { message = "This account is banned" });
 
                 var claims = new List<Claim>
                 {
                     new Claim(ClaimTypes.Name, user.username),
                     new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                    new Claim("IsAdmin", user.is_admin ? "true" : "false"),
-                    new Claim("is_banned", user.is_banned.ToString())
+                    new Claim("IsAdmin", user.is_admin ? "true" : "false")
                 };
 
-                var claimsIdentity = new ClaimsIdentity(
-                    claims, CookieAuthenticationDefaults.AuthenticationScheme);
+                var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+                var principal = new ClaimsPrincipal(identity);
 
                 await HttpContext.SignInAsync(
                     CookieAuthenticationDefaults.AuthenticationScheme,
-                    new ClaimsPrincipal(claimsIdentity),
+                    principal,
                     new AuthenticationProperties
                     {
                         IsPersistent = true,
-                        ExpiresUtc = DateTime.UtcNow.AddHours(1)
+                        ExpiresUtc = DateTime.UtcNow.AddDays(7),
+                        AllowRefresh = true,
+                        IssuedUtc = DateTime.UtcNow
                     });
 
                 return Ok(new
                 {
-                    message = "Logged in successfully",
+                    message = "Login successful",
                     username = user.username,
                     isAdmin = user.is_admin,
-                    userId = user.Id.ToString()
+                    userId = user.Id
                 });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Unexpected error during login");
-                return StatusCode(500, new { message = "An unexpected error occurred during login" });
+                _logger.LogError(ex, "Login error");
+                return StatusCode(500, new { message = "Unexpected server error during login." });
             }
         }
 
@@ -131,15 +117,10 @@ namespace GameAssetStorage.Controllers
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var isAdmin = User.FindFirstValue("IsAdmin") == "true";
 
-            if (username == null || userId == null)
-                return Unauthorized(new { message = "Unauthorized access" });
+            if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(userId))
+                return Unauthorized(new { message = "Not authenticated" });
 
-            return Ok(new
-            {
-                username = username,
-                userId = userId,
-                isAdmin = isAdmin
-            });
+            return Ok(new { username, userId, isAdmin });
         }
 
         [HttpPost("edit-profile")]
@@ -175,23 +156,23 @@ namespace GameAssetStorage.Controllers
                 return StatusCode(500, new { message = "DB access error", error = ex.Message });
             }
         }
-    }
 
-    public class UserRegistrationDto
-    {
-        public required string username { get; set; }
-        public required string password { get; set; }
-    }
+        public class UserRegistrationDto
+        {
+            public required string username { get; set; }
+            public required string password { get; set; }
+        }
 
-    public class UserLoginDto
-    {
-        public required string username { get; set; }
-        public required string password { get; set; }
-    }
+        public class UserLoginDto
+        {
+            public required string username { get; set; }
+            public required string password { get; set; }
+        }
 
-    public class EditProfileDto
-    {
-        public string? username { get; set; }
-        public string? password { get; set; }
+        public class EditProfileDto
+        {
+            public string? username { get; set; }
+            public string? password { get; set; }
+        }
     }
 }
